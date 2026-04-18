@@ -73,7 +73,7 @@ namespace PokemonAdventure.UI
         {
             _input       = ServiceLocator.Get<IPlayerInput>();
             _gridManager = ServiceLocator.Get<WorldGridManager>();
-            _overlay     = FindFirstObjectByType<GridOverlay>();
+            _overlay     = FindAnyObjectByType<GridOverlay>();
             _camera      = Camera.main;
 
             GameEventBus.Subscribe<SkillTargetingStartedEvent>(OnExternalTargetingStarted);
@@ -337,8 +337,7 @@ namespace PokemonAdventure.UI
         {
             if (_camera == null || _gridManager == null) return null;
 
-            var screenPos = _input?.CursorScreenPosition
-                         ?? new Vector2(Input.mousePosition.x, Input.mousePosition.y);
+            var screenPos = _input?.CursorScreenPosition ?? Vector2.zero;
 
             var ray = _camera.ScreenPointToRay(new Vector3(screenPos.x, screenPos.y, 0f));
 

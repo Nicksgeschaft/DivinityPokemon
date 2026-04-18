@@ -40,6 +40,7 @@ namespace PokemonAdventure.World
 
         private WorldGridManager _gridManager;
         private GameStateManager _stateManager;
+        private IPlayerInput     _input;
         private Camera           _camera;
         private BaseUnit         _unit;
 
@@ -60,6 +61,7 @@ namespace PokemonAdventure.World
         {
             _gridManager  = ServiceLocator.Get<WorldGridManager>();
             _stateManager = ServiceLocator.Get<GameStateManager>();
+            _input        = ServiceLocator.Get<IPlayerInput>();
             _camera       = Camera.main;
 
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
@@ -80,7 +82,7 @@ namespace PokemonAdventure.World
         {
             if (!_isActive || _camera == null || _gridManager == null) return;
 
-            if (Input.GetMouseButtonDown(0))
+            if (_input != null && _input.ConfirmPressed)
                 HandleClick();
         }
 
@@ -122,7 +124,7 @@ namespace PokemonAdventure.World
             _stopRequested = false;
 
             // Cache detectors once per path — FindObjectsByType is expensive per-frame
-            var detectors = Object.FindObjectsByType<CombatTriggerDetector>(FindObjectsSortMode.None);
+            var detectors = Object.FindObjectsByType<CombatTriggerDetector>();
 
             foreach (var cell in path)
             {
@@ -270,7 +272,8 @@ namespace PokemonAdventure.World
         {
             if (_camera == null || _gridManager == null) return null;
 
-            var ray = _camera.ScreenPointToRay(Input.mousePosition);
+            var cursorPos = _input?.CursorScreenPosition ?? Vector2.zero;
+            var ray = _camera.ScreenPointToRay(new Vector3(cursorPos.x, cursorPos.y, 0f));
 
             if (Physics.Raycast(ray, out var hit, _raycastDistance, _groundLayer))
                 return _gridManager.GetGridPosition(hit.point);

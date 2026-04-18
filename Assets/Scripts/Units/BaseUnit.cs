@@ -62,6 +62,7 @@ namespace PokemonAdventure.Units
         /// (Serialized field defaults to Neutral; Inspector values still win on prefabs.)
         /// </summary>
         protected void SetFaction(UnitFaction faction) => _faction = faction;
+        protected void SetDisplayName(string name)    => _displayName = name;
         public UnitStats   Stats        => _stats;
 
         public RuntimeUnitState RuntimeState => _runtimeState;
@@ -259,7 +260,7 @@ namespace PokemonAdventure.Units
         {
             if (!_drawDebugGizmos) return;
 
-            var gridManager = FindFirstObjectByType<WorldGridManager>();
+            var gridManager = FindAnyObjectByType<WorldGridManager>();
             float cellSize  = gridManager != null ? gridManager.CellSize : 1f;
 
             // Faction-coloured sight radius

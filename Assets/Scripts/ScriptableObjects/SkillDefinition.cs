@@ -8,6 +8,10 @@ namespace PokemonAdventure.ScriptableObjects
     // ==========================================================================
     // Skill Definition (ScriptableObject)
     // Complete design-time specification for one skill (move/ability).
+    //
+    // Effects list drives all runtime outcomes — add as many SkillEffects as
+    // needed per skill (e.g. damage + apply status + surface in one skill).
+    //
     // Create via: Assets → Create → PokemonAdventure → SkillDefinition
     // ==========================================================================
 
@@ -20,7 +24,8 @@ namespace PokemonAdventure.ScriptableObjects
         // ── Identity ──────────────────────────────────────────────────────────
 
         [Header("Identity")]
-        public string SkillId   = "skill_unnamed"; // Unique machine-readable ID
+        [Tooltip("Unique machine-readable ID used by cooldown tracking and registry lookups.")]
+        public string SkillId   = "skill_unnamed";
         public string SkillName = "Unknown Skill";
 
         [TextArea(2, 4)]
@@ -29,17 +34,16 @@ namespace PokemonAdventure.ScriptableObjects
         // ── Type & Category ───────────────────────────────────────────────────
 
         [Header("Type & Category")]
-        public PokemonType   SkillType     = PokemonType.Normal;
-        public SkillCategory Category      = SkillCategory.Physical;
-        public DamageType    DamageType    = DamageType.Physical;
+        [Tooltip("Pokémon type for STAB and type-effectiveness calculations.")]
+        public PokemonType   SkillType = PokemonType.Normal;
 
-        // ── Power & Cost ──────────────────────────────────────────────────────
+        [Tooltip("Display classification. Actual resolution is driven by the Effects list.")]
+        public SkillCategory Category  = SkillCategory.Physical;
 
-        [Header("Power & Cost")]
-        [Tooltip("Base damage power. 0 for status-only skills.")]
-        [Min(0)] public int BasePower = 0;
+        // ── AP & Cooldown ─────────────────────────────────────────────────────
 
-        [Tooltip("AP cost to use this skill in combat.")]
+        [Header("AP & Cooldown")]
+        [Tooltip("Action Point cost to use this skill in combat.")]
         [Range(0, 6)] public int APCost = 2;
 
         [Tooltip("Turns before this skill can be used again. 0 = no cooldown.")]
@@ -51,56 +55,53 @@ namespace PokemonAdventure.ScriptableObjects
         // ── Range & Targeting ─────────────────────────────────────────────────
 
         [Header("Range & Targeting")]
-        [Tooltip("Maximum range in grid cells from the caster.")]
+        [Tooltip("Maximum distance from the caster in grid cells.")]
         [Min(1)] public int Range = 1;
 
         public TargetingType Targeting = TargetingType.SingleEnemy;
         public AoEShape      AreaShape = AoEShape.Single;
 
-        [Tooltip("Radius of AoE effect in cells (if AreaShape != Single).")]
+        [Tooltip("Radius of AoE effect in cells. Ignored when AreaShape == Single.")]
         [Min(0)] public int AoERadius = 0;
-
-        // ── Status Application ────────────────────────────────────────────────
-
-        [Header("Status Effect")]
-        [Tooltip("Status effect applied on hit. None = no effect.")]
-        public StatusEffectType AppliedStatus = StatusEffectType.None;
-
-        [Tooltip("Chance (0–100) to apply the status on hit.")]
-        [Range(0, 100)] public int StatusApplyChance = 100;
-
-        [Tooltip("Duration in turns for the applied status.")]
-        [Min(1)] public int StatusDuration = 2;
-
-        [Tooltip("Magnitude of the applied status (e.g. poison damage per tick).")]
-        public float StatusMagnitude;
 
         // ── Prerequisites ─────────────────────────────────────────────────────
 
         [Header("Prerequisites")]
-        [Tooltip("Minimum stat values required to use this skill (e.g. certain skills need high SpecialAttack).")]
+        [Tooltip("Minimum stat values required to use this skill.")]
         public List<StatRequirement> StatRequirements = new();
-
-        // ── Overworld Availability ────────────────────────────────────────────
 
         [Header("Overworld")]
         [Tooltip("Can this skill be used outside of combat (e.g. Cut, Surf, Flash)?")]
         public bool UsableOutsideCombat;
-
-        [Tooltip("Description of the overworld effect if UsableOutsideCombat is true.")]
         public string OverworldEffectDescription;
 
         // ── Visuals / Audio ───────────────────────────────────────────────────
 
         [Header("Visuals & Audio")]
-        public GameObject VFXPrefab;       // Spawned at impact point
+        [Tooltip("Spawned at the impact point on skill resolution.")]
+        public GameObject VFXPrefab;
         public AudioClip  SoundEffect;
-        public Sprite     SkillIcon;
+
+        [Tooltip("Animation the caster plays when this skill is used.")]
+        public PokemonAnimId CastAnimation = PokemonAnimId.Attack;
+
+        [Tooltip("Icon shown in the skill bar slot.")]
+        public Sprite SkillIcon;
+
+        [Tooltip("Background sprite for this skill's slot in the skill bar. " +
+                 "Overrides the automatic type-colour background when set.")]
+        public Sprite SkillBarBackground;
+
+        // ── Effects ───────────────────────────────────────────────────────────
+
+        [Header("Effects")]
+        [Tooltip("All outcomes applied when this skill resolves. " +
+                 "Processed in list order; add multiple effects for combo moves.")]
+        public List<SkillEffect> Effects = new();
     }
 
     // ==========================================================================
     // Stat Requirement
-    // A minimum value for a specific stat needed to unlock/use a skill.
     // ==========================================================================
 
     [System.Serializable]

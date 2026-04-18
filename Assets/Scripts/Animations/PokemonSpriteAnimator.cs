@@ -46,6 +46,13 @@ public class PokemonSpriteAnimator : MonoBehaviour
     private float                       _timer;
     private int                         _row;    // direction row 0–7
     private Vector3                     _originalLocalPosition;
+    private bool                        _completeFired;
+
+    // Fired once when a non-looping animation reaches its last frame.
+    public event System.Action OnAnimationComplete;
+
+    public bool IsFinished => _current != null && !_current.loop &&
+                              _frame >= _current.FrameCount - 1 && _completeFired;
 
     // ── Public API ────────────────────────────────────────────────────────
 
@@ -69,9 +76,27 @@ public class PokemonSpriteAnimator : MonoBehaviour
         if (def == null || def.bodyFrames == null || def.bodyFrames.Length == 0) return;
         if (def == _current) return;
 
-        _current = def;
-        _frame   = 0;
-        _timer   = 0f;
+        _current       = def;
+        _frame         = 0;
+        _timer         = 0f;
+        _completeFired = false;
+    }
+
+    /// <summary>
+    /// Like Play() but restarts the animation even if it is already playing.
+    /// Use this when the same animation needs to repeat (e.g. multi-hit Hurt).
+    /// </summary>
+    public void PlayForced(PokemonAnimId id)
+    {
+        if (_animSet == null) return;
+
+        var def = _animSet.Get(id);
+        if (def == null || def.bodyFrames == null || def.bodyFrames.Length == 0) return;
+
+        _current       = def;
+        _frame         = 0;
+        _timer         = 0f;
+        _completeFired = false;
     }
 
     /// <summary>Squish/restore the sprite vertically to visualise crouching.</summary>
@@ -141,8 +166,20 @@ public class PokemonSpriteAnimator : MonoBehaviour
         {
             if (_frame >= _current.FrameCount)
             {
-                _frame = _current.loop ? 0 : _current.FrameCount - 1;
-                if (!_current.loop) break;
+                if (_current.loop)
+                {
+                    _frame = 0;
+                }
+                else
+                {
+                    _frame = _current.FrameCount - 1;
+                    if (!_completeFired)
+                    {
+                        _completeFired = true;
+                        OnAnimationComplete?.Invoke();
+                    }
+                    break;
+                }
             }
 
             float dur = _current.durations[_frame] * _tickSeconds;

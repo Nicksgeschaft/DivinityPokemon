@@ -20,15 +20,28 @@ namespace PokemonAdventure.Units
 
         protected override void Awake()
         {
-            // Establish faction before base.Awake() initialises RuntimeState.
-            // Ensures SightTrigger can detect this unit even when spawned via AddComponent.
             SetFaction(UnitFaction.Friendly);
 
-            // Apply definition stats before base Awake initialises RuntimeState
             if (_definition != null)
-                _stats = _definition.BaseStats;
+                ApplyDefinition(_definition);
 
             base.Awake();
+        }
+
+        // Called after AddComponent when the definition is assigned at runtime
+        // (e.g. from DebugSceneSetup). Re-initialises RuntimeState with correct stats.
+        public void Initialize(PokemonDefinition definition)
+        {
+            _definition = definition;
+            if (_definition == null) return;
+            ApplyDefinition(_definition);
+            RuntimeState.Initialize(_stats);
+        }
+
+        private void ApplyDefinition(PokemonDefinition definition)
+        {
+            _stats = definition.BaseStats;
+            SetDisplayName(definition.PokemonName);
         }
     }
 }

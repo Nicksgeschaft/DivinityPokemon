@@ -126,33 +126,35 @@ namespace PokemonAdventure.Combat
     public interface IDamageFormula
     {
         /// <summary>
-        /// Calculates raw damage from skill + caster stats, BEFORE any type modifiers.
+        /// Calculates raw damage from skill + effect + caster stats, BEFORE type modifiers.
         /// </summary>
-        float Calculate(ScriptableObjects.SkillDefinition skill, Units.IUnit caster);
+        float Calculate(
+            ScriptableObjects.SkillDefinition skill,
+            ScriptableObjects.SkillEffect effect,
+            Units.IUnit caster);
     }
 
     /// <summary>
-    /// Default formula: BasePower × (Attack / ScalingFactor).
+    /// Default formula: effect.Power × (AttackStat / ScalingFactor).
     /// Defense does NOT divide here — it scales armor bars instead.
     /// ScalingFactor is the tuning lever; start at 10 and adjust per feel.
     /// </summary>
     public sealed class DefaultDamageFormula : IDamageFormula
     {
-        /// <summary>
-        /// Divides the relevant attack stat to bring raw damage into a reasonable
-        /// range relative to HP values. Tune this to match your HP/armor budget.
-        /// </summary>
         public float ScalingFactor { get; set; } = 10f;
 
-        public float Calculate(ScriptableObjects.SkillDefinition skill, Units.IUnit caster)
+        public float Calculate(
+            ScriptableObjects.SkillDefinition skill,
+            ScriptableObjects.SkillEffect effect,
+            Units.IUnit caster)
         {
-            if (skill.BasePower <= 0) return 0f;
+            if (effect.Power <= 0) return 0f;
 
-            float stat = skill.Category == SkillCategory.Physical
+            float stat = effect.DamageCategory == DamageType.Physical
                 ? caster.Stats.EffectiveAttack
                 : caster.Stats.EffectiveSpecialAttack;
 
-            return skill.BasePower * (stat / ScalingFactor);
+            return effect.Power * (stat / ScalingFactor);
         }
     }
 }

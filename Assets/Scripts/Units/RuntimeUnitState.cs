@@ -90,7 +90,7 @@ namespace PokemonAdventure.Units
             CurrentHP             = stats.MaxHP;
             CurrentPhysicalArmor  = stats.MaxPhysicalArmor;
             CurrentSpecialArmor   = stats.MaxSpecialArmor;
-            CurrentAP             = stats.BaseInitiative >= 5 ? 3 : 2;
+            CurrentAP             = 0; // GainTurnAP() on first turn start adds the initial 3
             APPerTurn             = 3;
             HasActedThisTurn      = false;
             HasMovedThisTurn      = false;

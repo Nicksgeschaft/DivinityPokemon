@@ -108,7 +108,7 @@ namespace PokemonAdventure.World
             var list = new List<BaseUnit> { _ownerUnit, playerUnit };
 
             // Include nearby hostile allies
-            var allUnits = Object.FindObjectsByType<BaseUnit>(FindObjectsSortMode.None);
+            var allUnits = Object.FindObjectsByType<BaseUnit>();
             foreach (var u in allUnits)
             {
                 if (u == _ownerUnit || u == playerUnit) continue;

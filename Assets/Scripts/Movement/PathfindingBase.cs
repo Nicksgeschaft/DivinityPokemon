@@ -38,7 +38,8 @@ namespace PokemonAdventure.Movement
             var openSet   = new List<GridCell> { startCell };
             var closedSet = new HashSet<GridCell>();
 
-            // Reset pathfinding data on reachable cells
+            _pathStart = startCell.GridPosition;
+
             ResetPathData(startCell, goalCell, grid);
 
             startCell.GCost = 0;
@@ -112,11 +113,64 @@ namespace PokemonAdventure.Movement
             return reachable;
         }
 
+        // ── Direct Interleaved Path ───────────────────────────────────────────
+
+        /// <summary>
+        /// Builds a direct zigzag path from <paramref name="from"/> to <paramref name="to"/>
+        /// using 4-directional steps only. At each step the axis with more remaining distance
+        /// is chosen, producing an interleaved R-U-R-U pattern instead of L-shaped routing.
+        /// Returns null if any cell on the direct line is blocked — caller falls back to A*.
+        /// </summary>
+        public static List<GridCell> BuildDirectPath(
+            Vector2Int from,
+            Vector2Int to,
+            WorldGridManager grid)
+        {
+            var path = new List<GridCell>();
+            int x = from.x, y = from.y;
+            int sx = to.x > x ? 1 : -1;
+            int sy = to.y > y ? 1 : -1;
+
+            while (x != to.x || y != to.y)
+            {
+                int remX = Mathf.Abs(to.x - x);
+                int remY = Mathf.Abs(to.y - y);
+
+                // Step in the axis with more remaining distance; prefer X on ties
+                if (remX >= remY && remX > 0)
+                    x += sx;
+                else
+                    y += sy;
+
+                var cell = grid.GetCell(new Vector2Int(x, y));
+                if (cell == null || !cell.IsWalkable)
+                    return null; // blocked — let caller use A* instead
+
+                path.Add(cell);
+            }
+
+            return path;
+        }
+
         // ── Internal Helpers ──────────────────────────────────────────────────
 
-        private static float Heuristic(Vector2Int a, Vector2Int b) =>
-            // Manhattan heuristic (admissible for 4-directional grid)
-            GridUtility.ManhattanDistance(a, b);
+        // Stored at the start of each FindPath call for tie-breaking (single-threaded).
+        private static Vector2Int _pathStart;
+
+        private static float Heuristic(Vector2Int current, Vector2Int goal)
+        {
+            float h = GridUtility.ManhattanDistance(current, goal);
+
+            // Cross-product tie-breaking: nodes on the direct line from _pathStart to goal
+            // get penalty 0; nodes that deviate get a small proportional penalty.
+            // This makes A* prefer zigzag paths over L-shaped ones when costs are equal.
+            int dx1 = current.x - goal.x;
+            int dy1 = current.y - goal.y;
+            int dx2 = _pathStart.x - goal.x;
+            int dy2 = _pathStart.y - goal.y;
+            float cross = Mathf.Abs(dx1 * dy2 - dy1 * dx2);
+            return h + cross * 0.001f;
+        }
 
         private static GridCell GetLowestFCost(List<GridCell> list)
         {

@@ -44,7 +44,7 @@ namespace PokemonAdventure.Core
             if (_persistAcrossScenes)
             {
                 // Guard against duplicate bootstrappers after scene reload
-                var existing = FindObjectsByType<GameBootstrapper>(FindObjectsSortMode.None);
+                var existing = FindObjectsByType<GameBootstrapper>();
                 if (existing.Length > 1)
                 {
                     Destroy(gameObject);

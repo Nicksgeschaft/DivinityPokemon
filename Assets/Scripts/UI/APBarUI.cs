@@ -37,17 +37,8 @@ namespace PokemonAdventure.UI
 
         private void Start()
         {
-            BuildUI();
-
-            GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
-            GameEventBus.Subscribe<TurnStartedEvent>(OnTurnChanged);
-            GameEventBus.Subscribe<TurnEndedEvent>(OnTurnChanged);
-            GameEventBus.Subscribe<MovementCompletedEvent>(OnMovementCompleted);
-
-            // Try to find the player unit immediately
-            TryFindPlayerUnit();
-
-            SetVisible(false);
+            // Replaced by ActionPointBarUI + BottomHudController — this component does nothing.
+            // Remove this MonoBehaviour from the scene when cleaning up.
         }
 
         private void OnDestroy()
@@ -92,7 +83,7 @@ namespace PokemonAdventure.UI
         private void BuildUI()
         {
             // Reuse existing Screen Space Overlay canvas or create one
-            _canvas = FindFirstObjectByType<Canvas>();
+            _canvas = FindAnyObjectByType<Canvas>();
             if (_canvas == null || _canvas.renderMode != RenderMode.ScreenSpaceOverlay)
             {
                 var cgo    = new GameObject("APBarCanvas");
@@ -187,7 +178,7 @@ namespace PokemonAdventure.UI
         private void TryFindPlayerUnit()
         {
             if (_trackedUnit != null) return;
-            var pu = FindFirstObjectByType<PlayerUnit>();
+            var pu = FindAnyObjectByType<PlayerUnit>();
             if (pu != null) SetTrackedUnit(pu);
         }
 

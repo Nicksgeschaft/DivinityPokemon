@@ -41,6 +41,7 @@ namespace PokemonAdventure.Combat
 
         private WorldGridManager      _gridManager;
         private GameStateManager      _stateManager;
+        private IPlayerInput          _input;
         private GridOverlay           _overlay;
         private Camera                _camera;
         private BaseUnit              _unit;
@@ -63,7 +64,8 @@ namespace PokemonAdventure.Combat
         {
             _gridManager  = ServiceLocator.Get<WorldGridManager>();
             _stateManager = ServiceLocator.Get<GameStateManager>();
-            _overlay      = FindFirstObjectByType<GridOverlay>();
+            _input        = ServiceLocator.Get<IPlayerInput>();
+            _overlay      = FindAnyObjectByType<GridOverlay>();
             _camera       = Camera.main;
 
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
@@ -88,7 +90,7 @@ namespace PokemonAdventure.Combat
 
             UpdateTargetHighlight();
 
-            if (Input.GetMouseButtonDown(0))
+            if (_input != null && _input.ConfirmPressed)
                 HandleClick();
         }
 
@@ -223,7 +225,8 @@ namespace PokemonAdventure.Combat
         {
             if (_camera == null || _gridManager == null) return null;
 
-            var ray = _camera.ScreenPointToRay(Input.mousePosition);
+            var cursorPos = _input?.CursorScreenPosition ?? Vector2.zero;
+            var ray = _camera.ScreenPointToRay(new Vector3(cursorPos.x, cursorPos.y, 0f));
 
             if (Physics.Raycast(ray, out var hit, _raycastDistance, _groundLayer))
                 return _gridManager.GetGridPosition(hit.point);

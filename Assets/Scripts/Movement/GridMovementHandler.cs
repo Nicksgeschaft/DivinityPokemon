@@ -52,9 +52,12 @@ namespace PokemonAdventure.Movement
             if (!target.IsPassable)
                 return new MovementRequest(unit, targetCell, "Target cell is not passable.");
 
-            // Pathfinding
-            var startCell = gridManager.GetCell(state.GridPosition);
-            var path      = PathfindingBase.FindPath(startCell, target, gridManager);
+            // Direct interleaved path first (R-U-R-U zigzag); A* fallback if blocked
+            var startCell  = gridManager.GetCell(state.GridPosition);
+            var directPath = PathfindingBase.BuildDirectPath(state.GridPosition, targetCell, gridManager);
+            if (directPath == null)
+                Debug.LogWarning($"[Movement] Direct path blocked {state.GridPosition}→{targetCell}, using A*");
+            var path = directPath ?? PathfindingBase.FindPath(startCell, target, gridManager);
             if (path == null)
                 return new MovementRequest(unit, targetCell, "No path to target.");
 
@@ -83,11 +86,16 @@ namespace PokemonAdventure.Movement
             var unit  = request.Unit;
             var state = unit.RuntimeState;
 
-            // Spend AP upfront
-            if (!state.TrySpendAP(request.APCost))
-                yield break;
-
+            // AP is spent by the caller (CombatMovementController) via ActionPointController
+            // so APChangedEvent fires and the UI updates correctly.
             state.HasMovedThisTurn = true;
+
+            GameEventBus.Publish(new MovementStartedEvent
+            {
+                UnitId    = unit.UnitId,
+                FromCell  = state.GridPosition,
+                ToCell    = request.TargetCell
+            });
 
             Vector2Int prevCell = state.GridPosition;
 

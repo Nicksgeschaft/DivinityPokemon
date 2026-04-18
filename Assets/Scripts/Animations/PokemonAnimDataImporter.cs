@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Xml.Linq;
 using UnityEditor;
+using UnityEditor.U2D.Sprites;
 using UnityEngine;
 
 public static class PokemonAnimDataImporter
@@ -191,45 +192,54 @@ public static class PokemonAnimDataImporter
         ti.GetSourceTextureWidthAndHeight(out int texW, out int texH);
         if (texW == 0 || texH == 0) return;
 
-        int cols = Mathf.Max(1, texW / frameW);
-        int rows = Mathf.Max(1, texH / frameH);
+        int cols          = Mathf.Max(1, texW / frameW);
+        int rows          = Mathf.Max(1, texH / frameH);
+        int expectedCount = rows * cols;
+
+        // Read current sprite count via ISpriteEditorDataProvider (replaces ti.spritesheet)
+        var factory = new SpriteDataProviderFactories();
+        factory.Init();
+        var dataProvider = factory.GetSpriteEditorDataProviderFromObject(ti);
+        dataProvider.InitSpriteEditorDataProvider();
+        int currentCount = dataProvider.GetSpriteRects()?.Length ?? 0;
 
         // Only re-slice if settings changed (avoids unnecessary reimports)
         bool needsUpdate =
-            ti.textureType        != TextureImporterType.Sprite      ||
-            ti.spriteImportMode   != SpriteImportMode.Multiple       ||
-            ti.filterMode         != FilterMode.Point                 ||
-            ti.mipmapEnabled      != false                            ||
-            ti.spritesheet.Length != rows * cols;
+            ti.textureType      != TextureImporterType.Sprite  ||
+            ti.spriteImportMode != SpriteImportMode.Multiple   ||
+            ti.filterMode       != FilterMode.Point            ||
+            ti.mipmapEnabled    != false                       ||
+            currentCount        != expectedCount;
 
         if (!needsUpdate) return;
 
-        ti.textureType          = TextureImporterType.Sprite;
-        ti.spriteImportMode     = SpriteImportMode.Multiple;
-        ti.filterMode           = FilterMode.Point;
-        ti.textureCompression   = TextureImporterCompression.Uncompressed;
-        ti.mipmapEnabled        = false;
-        ti.alphaIsTransparency  = true;
+        ti.textureType         = TextureImporterType.Sprite;
+        ti.spriteImportMode    = SpriteImportMode.Multiple;
+        ti.filterMode          = FilterMode.Point;
+        ti.textureCompression  = TextureImporterCompression.Uncompressed;
+        ti.mipmapEnabled       = false;
+        ti.alphaIsTransparency = true;
 
-        var metas = new SpriteMetaData[rows * cols];
+        // Re-init after changing import mode so the provider sees Multiple mode
+        dataProvider.InitSpriteEditorDataProvider();
+
+        var rects = new SpriteRect[expectedCount];
         for (int row = 0; row < rows; row++)
+        for (int col = 0; col < cols; col++)
         {
-            for (int col = 0; col < cols; col++)
+            int i = row * cols + col;
+            rects[i] = new SpriteRect
             {
-                int i = row * cols + col;
-                metas[i] = new SpriteMetaData
-                {
-                    name      = $"frame_{i}",
-                    // Unity rects have Y=0 at bottom; PNG row 0 is at the top.
-                    rect      = new Rect(col * frameW, texH - (row + 1) * frameH, frameW, frameH),
-                    pivot     = new Vector2(0.5f, 0f),
-                    alignment = (int)SpriteAlignment.Custom
-                };
-            }
+                name      = $"frame_{i}",
+                // Unity rects have Y=0 at bottom; PNG row 0 is at the top.
+                rect      = new Rect(col * frameW, texH - (row + 1) * frameH, frameW, frameH),
+                pivot     = new Vector2(0.5f, 0f),
+                alignment = SpriteAlignment.Custom
+            };
         }
 
-        ti.spritesheet = metas;
-        EditorUtility.SetDirty(ti);
+        dataProvider.SetSpriteRects(rects);
+        dataProvider.Apply();
         ti.SaveAndReimport();
     }
 

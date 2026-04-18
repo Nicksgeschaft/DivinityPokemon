@@ -56,7 +56,7 @@ namespace PokemonAdventure.UI
             _registry = ServiceLocator.Get<UnitRegistry>();
 
             // Auto-track the first PlayerUnit in the scene (single-player prototype)
-            var player = FindFirstObjectByType<PlayerUnit>();
+            var player = FindAnyObjectByType<PlayerUnit>();
             if (player != null)
                 _trackedUnit = player;
 

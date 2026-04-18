@@ -92,7 +92,11 @@ namespace PokemonAdventure.Combat
             caster.RuntimeState.HasActedThisTurn = true;
 
             // ── Gather targets and resolve ─────────────────────────────────────
-            var targets = GatherTargets(skill, caster, evt.TargetCell, evt.TargetUnitId);
+            var targets  = GatherTargets(skill, caster, evt.TargetCell, evt.TargetUnitId);
+            var hitCells = GatherHitCells(skill, evt.TargetCell);
+
+            // Apply surface effects once for all hit cells
+            SkillResolver.ResolveGridEffects(skill, hitCells);
 
             int resolvedCount = 0;
             foreach (var target in targets)
@@ -173,6 +177,35 @@ namespace PokemonAdventure.Combat
             }
 
             return targets;
+        }
+
+        // ── Hit Cell Collection ───────────────────────────────────────────────
+
+        /// <summary>
+        /// Returns all GridCells hit by the skill. Used to apply terrain surface effects.
+        /// For single-target skills this is just the target cell; for AoE it's the full radius.
+        /// </summary>
+        private List<Grid.GridCell> GatherHitCells(SkillDefinition skill, Vector2Int targetCell)
+        {
+            var cells = new List<Grid.GridCell>();
+            if (_gridManager == null) return cells;
+
+            if (skill.AoERadius > 0)
+            {
+                var positions = GridUtility.GetCellsInCircle(targetCell, skill.AoERadius);
+                foreach (var pos in positions)
+                {
+                    var cell = _gridManager.GetCell(pos);
+                    if (cell != null) cells.Add(cell);
+                }
+            }
+            else
+            {
+                var cell = _gridManager.GetCell(targetCell);
+                if (cell != null) cells.Add(cell);
+            }
+
+            return cells;
         }
 
         /// <summary>Add every unit on cells within <paramref name="radius"/> of <paramref name="center"/>.</summary>

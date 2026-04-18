@@ -64,8 +64,46 @@ namespace PokemonAdventure.ScriptableObjects
         [Tooltip("Prefab spawned in the overworld and combat. Must have BaseUnit component.")]
         public GameObject UnitPrefab;
 
-        [Tooltip("2D sprite for UI panels and status bars.")]
-        public Sprite PortraitSprite;
+        [Tooltip("PMD-style 8-directional sprite animation set for overworld and combat.")]
+        public PokemonAnimationSet AnimationSet;
+
+        [Header("Portrait Emotions")]
+        [Tooltip("One sprite per emotion. OnValidate auto-adds missing slots — just drag sprites into each.")]
+        public List<EmotionPortrait> EmotionPortraits = new();
+
+        // ── Portrait API ──────────────────────────────────────────────────────
+
+        public Sprite GetPortrait(PortraitEmotion emotion)
+        {
+            foreach (var entry in EmotionPortraits)
+                if (entry.Emotion == emotion && entry.Portrait != null)
+                    return entry.Portrait;
+
+            // Fallback: Normal portrait
+            foreach (var entry in EmotionPortraits)
+                if (entry.Emotion == PortraitEmotion.Normal && entry.Portrait != null)
+                    return entry.Portrait;
+
+            return null;
+        }
+
+        // ── Editor Helpers ────────────────────────────────────────────────────
+
+#if UNITY_EDITOR
+        private void OnValidate()
+        {
+            var all = (PortraitEmotion[])System.Enum.GetValues(typeof(PortraitEmotion));
+            foreach (var emotion in all)
+            {
+                bool exists = false;
+                foreach (var e in EmotionPortraits)
+                    if (e.Emotion == emotion) { exists = true; break; }
+
+                if (!exists)
+                    EmotionPortraits.Add(new EmotionPortrait { Emotion = emotion });
+            }
+        }
+#endif
 
         // ── Audio ─────────────────────────────────────────────────────────────
 
@@ -76,7 +114,6 @@ namespace PokemonAdventure.ScriptableObjects
 
     // ==========================================================================
     // Learnable Skill Entry
-    // Links a SkillDefinition to the level at which it is learned.
     // ==========================================================================
 
     [System.Serializable]
@@ -84,5 +121,42 @@ namespace PokemonAdventure.ScriptableObjects
     {
         [Min(1)] public int Level;
         public SkillDefinition Skill;
+    }
+
+    // ==========================================================================
+    // Portrait Emotion
+    // 20 discrete emotional states shown in the bottom HUD portrait.
+    // Index order matches the source asset naming convention.
+    // ==========================================================================
+
+    public enum PortraitEmotion
+    {
+        Normal       =  0,
+        Happy        =  1,
+        Pain         =  2,
+        Angry        =  3,
+        Worried      =  4,
+        Sad          =  5,
+        Crying       =  6,
+        Shouting     =  7,
+        Teary        =  8,
+        Determined   =  9,
+        Joyous       = 10,
+        Inspired     = 11,
+        Surprised    = 12,
+        Dizzy        = 13,  // used for KO state
+        HardShouting = 14,
+        Relieved     = 15,
+        Sigh         = 16,
+        Stunned      = 17,
+        WorriedAlt   = 18,
+        FeelGood     = 19,
+    }
+
+    [System.Serializable]
+    public class EmotionPortrait
+    {
+        public PortraitEmotion Emotion;
+        public Sprite          Portrait;
     }
 }

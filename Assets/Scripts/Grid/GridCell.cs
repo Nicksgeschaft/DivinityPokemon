@@ -39,6 +39,12 @@ namespace PokemonAdventure.Grid
         /// <summary>Current terrain surface (may change via skills/explosions).</summary>
         public SurfaceType CurrentSurface = SurfaceType.Normal;
 
+        /// <summary>
+        /// Turns the current surface lasts. 0 = permanent until another skill overwrites it.
+        /// Set in level design for preset surfaces; decremented by TurnManager each round.
+        /// </summary>
+        public int SurfaceDuration;
+
         /// <summary>Set to true when this cell falls inside the active combat zone.</summary>
         [NonSerialized] public bool IsInCombatZone;
 

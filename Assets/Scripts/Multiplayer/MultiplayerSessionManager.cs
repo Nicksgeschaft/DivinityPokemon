@@ -26,8 +26,8 @@ namespace PokemonAdventure.Multiplayer
         [Tooltip("Max number of concurrent players (including host).")]
         [SerializeField] private int _maxPlayers = PlayerSlot.MaxSlots;
 
-        [Tooltip("If true, empty slots are filled by AI companions.")]
-        [SerializeField] private bool _fillEmptySlotsWithAI = true;
+        [Tooltip("If true, empty slots are filled by AI companions. Off by default — local player controls all friendly units.")]
+        [SerializeField] private bool _fillEmptySlotsWithAI = false;
 
         [Header("Debug")]
         [SerializeField] private bool _simulateLocalMultiplayer; // For offline testing
@@ -113,12 +113,28 @@ namespace PokemonAdventure.Multiplayer
         public bool CanAuthorise(PlayerSlot slot) =>
             IsHost || slot?.SlotIndex == 0;
 
+        // ── Slot Assignment ───────────────────────────────────────────────────
+
+        /// <summary>
+        /// Called by DebugSceneSetup (and later the character-select screen) once the
+        /// player unit is spawned. Links the live unit and its definition to the slot.
+        /// </summary>
+        public void AssignUnitToSlot(int index, BaseUnit unit,
+            PokemonAdventure.ScriptableObjects.PokemonDefinition pokemon)
+        {
+            if (index < 0 || index >= _slots.Length) return;
+            _slots[index].ActiveUnit      = unit;
+            _slots[index].SelectedPokemon = pokemon;
+            Debug.Log($"[MultiplayerSessionManager] Slot {index} assigned: " +
+                      $"{pokemon?.PokemonName ?? "?"} ({unit?.UnitId ?? "?"})");
+        }
+
         // ── Internal ─────────────────────────────────────────────────────────
 
         private void FillSlotAsLocalPlayer(int index, string name)
         {
-            _slots[index].Status    = PlayerSlotStatus.Filled;
-            _slots[index].PlayerName = name;
+            _slots[index].Status          = PlayerSlotStatus.Filled;
+            _slots[index].PlayerName      = name;
             _slots[index].NetworkPlayerId = "local";
         }
 

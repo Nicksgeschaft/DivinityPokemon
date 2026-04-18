@@ -50,11 +50,12 @@ namespace PokemonAdventure.World
 
         // ── Runtime ───────────────────────────────────────────────────────────
 
-        private Vector3 _focusPoint;          // Ground point the camera looks at
-        private float   _currentHeight;
-        private float   _targetHeight;
-        private float   _heightVelocity;
-        private bool    _isActive = true;
+        private Vector3      _focusPoint;
+        private float        _currentHeight;
+        private float        _targetHeight;
+        private float        _heightVelocity;
+        private bool         _isActive = true;
+        private IPlayerInput _input;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -69,6 +70,8 @@ namespace PokemonAdventure.World
                 (_minZ + _maxZ) * 0.5f);
 
             ApplyPosition();
+
+            _input = ServiceLocator.Get<IPlayerInput>();
 
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
         }
@@ -93,23 +96,25 @@ namespace PokemonAdventure.World
         {
             var dir = Vector3.zero;
 
-            // Arrow keys
-            if (Input.GetKey(KeyCode.LeftArrow)  || Input.GetKey(KeyCode.A)) dir.x -= 1f;
-            if (Input.GetKey(KeyCode.RightArrow) || Input.GetKey(KeyCode.D)) dir.x += 1f;
-            if (Input.GetKey(KeyCode.UpArrow)    || Input.GetKey(KeyCode.W)) dir.z += 1f;
-            if (Input.GetKey(KeyCode.DownArrow)  || Input.GetKey(KeyCode.S)) dir.z -= 1f;
+            // WASD / arrow keys via IPlayerInput
+            if (_input != null)
+            {
+                var move = _input.MoveDirection;
+                dir.x += move.x;
+                dir.z += move.y;
+            }
 
             // Edge scrolling (only when cursor is inside the window)
             if (_edgeScrollEnabled && Application.isFocused)
             {
-                var m = Input.mousePosition;
+                var m = _input?.CursorScreenPosition ?? Vector2.zero;
                 if (m.x >= 0 && m.x <= Screen.width &&
                     m.y >= 0 && m.y <= Screen.height)
                 {
-                    if (m.x < _edgeThickness)                    dir.x -= 1f;
-                    if (m.x > Screen.width  - _edgeThickness)    dir.x += 1f;
-                    if (m.y < _edgeThickness)                    dir.z -= 1f;
-                    if (m.y > Screen.height - _edgeThickness)    dir.z += 1f;
+                    if (m.x < _edgeThickness)                 dir.x -= 1f;
+                    if (m.x > Screen.width  - _edgeThickness) dir.x += 1f;
+                    if (m.y < _edgeThickness)                 dir.z -= 1f;
+                    if (m.y > Screen.height - _edgeThickness) dir.z += 1f;
                 }
             }
 
@@ -124,7 +129,7 @@ namespace PokemonAdventure.World
 
         private void HandleZoom()
         {
-            float scroll = Input.mouseScrollDelta.y;
+            float scroll = _input?.ScrollDelta ?? 0f;
             if (Mathf.Abs(scroll) > 0.01f)
                 _targetHeight = Mathf.Clamp(
                     _targetHeight - scroll * _zoomSpeed,

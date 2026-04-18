@@ -56,6 +56,12 @@ namespace PokemonAdventure.Core
         /// <summary>Activate skill slot 4 (R).</summary>
         bool Skill4Pressed { get; }
 
+        /// <summary>
+        /// Activate skill bar slot by index (0 = slot 1 … 9 = slot 0).
+        /// Maps to keyboard keys 1–0 by default.
+        /// </summary>
+        bool GetSkillSlotPressed(int slotIndex);
+
         // ── Cursor / Targeting ────────────────────────────────────────────────
 
         /// <summary>Current cursor position in screen space.</summary>

@@ -43,7 +43,7 @@ namespace PokemonAdventure.Grid
         private void Awake()
         {
             _gridManager = GetComponentInParent<WorldGridManager>()
-                        ?? FindFirstObjectByType<WorldGridManager>();
+                        ?? FindAnyObjectByType<WorldGridManager>();
         }
 
         private void OnDestroy()

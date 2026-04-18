@@ -144,6 +144,13 @@ namespace PokemonAdventure.Core
         public int APSpent;
     }
 
+    public struct MovementStartedEvent
+    {
+        public string UnitId;
+        public UnityEngine.Vector2Int FromCell;
+        public UnityEngine.Vector2Int ToCell;
+    }
+
     public struct MovementCompletedEvent
     {
         public string UnitId;

@@ -48,6 +48,7 @@ namespace PokemonAdventure.Movement
 
         private WorldGridManager      _gridManager;
         private GameStateManager      _stateManager;
+        private IPlayerInput          _input;
         private Camera                _camera;
         private BaseUnit              _unit;
         private ActionPointController _ap;
@@ -56,7 +57,7 @@ namespace PokemonAdventure.Movement
         private GridOverlay _overlay;
         private GridOverlay Overlay => _overlay != null
             ? _overlay
-            : (_overlay = FindFirstObjectByType<GridOverlay>());
+            : (_overlay = FindAnyObjectByType<GridOverlay>());
 
         // ── State ─────────────────────────────────────────────────────────────
 
@@ -80,6 +81,7 @@ namespace PokemonAdventure.Movement
         {
             _gridManager  = ServiceLocator.Get<WorldGridManager>();
             _stateManager = ServiceLocator.Get<GameStateManager>();
+            _input        = ServiceLocator.Get<IPlayerInput>();
             _camera       = Camera.main;
 
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
@@ -104,7 +106,7 @@ namespace PokemonAdventure.Movement
 
             UpdateHover();
 
-            if (Input.GetMouseButtonDown(0))
+            if (_input != null && _input.ConfirmPressed)
                 HandleClick();
         }
 
@@ -150,7 +152,8 @@ namespace PokemonAdventure.Movement
             var targetCell = _gridManager.GetCell(_hoveredCell.Value);
             if (startCell == null || targetCell == null) return;
 
-            var path = PathfindingBase.FindPath(startCell, targetCell, _gridManager);
+            var path = PathfindingBase.BuildDirectPath(_unit.GridPosition, _hoveredCell.Value, _gridManager)
+                    ?? PathfindingBase.FindPath(startCell, targetCell, _gridManager);
             if (path == null || path.Count == 0) return;
 
             // Draw path, switching to red at the first cell outside range
@@ -232,6 +235,13 @@ namespace PokemonAdventure.Movement
             _isMoving = true;
             ClearAll();
 
+            // Spend AP through ActionPointController so APChangedEvent fires and the UI updates.
+            if (!_ap.SpendAP(request.APCost))
+            {
+                _isMoving = false;
+                yield break;
+            }
+
             yield return GridMovementHandler.ExecuteMovement(request, _gridManager, _moveSpeed);
 
             _isMoving = false;
@@ -305,7 +315,7 @@ namespace PokemonAdventure.Movement
                 ? Color.yellow
                 : Color.red;
 
-            var mp   = Input.mousePosition;
+            var mp   = _input?.CursorScreenPosition ?? Vector2.zero;
             var rect = new Rect(mp.x + 14, Screen.height - mp.y - 34, 70, 26);
             GUI.Label(rect, $"{_hoveredAPCost} AP", _apStyle);
         }
@@ -316,7 +326,8 @@ namespace PokemonAdventure.Movement
         {
             if (_camera == null || _gridManager == null) return null;
 
-            var ray = _camera.ScreenPointToRay(Input.mousePosition);
+            var cursorPos = _input?.CursorScreenPosition ?? Vector2.zero;
+            var ray = _camera.ScreenPointToRay(new Vector3(cursorPos.x, cursorPos.y, 0f));
 
             if (Physics.Raycast(ray, out var hit, _raycastDistance, _groundLayer))
                 return _gridManager.GetGridPosition(hit.point);

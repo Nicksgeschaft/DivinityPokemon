@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: b4a138d229ee78e448c924636c62ca5d
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 256188
+  packageName: Skill Icon Package
+  packageVersion: 1.0
+  assetPath: Assets/SkillIconPackage/script/TabPanel.cs
+  uploadId: 599649

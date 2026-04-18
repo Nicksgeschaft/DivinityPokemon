@@ -32,15 +32,15 @@ namespace PokemonAdventure.World
         [SerializeField] private int   _testGridSize = 20;
         [SerializeField] private float _cellSize     = 1f;
 
+        [Header("Player Setup")]
+        [Tooltip("Glumanda (or whichever Pokémon Player 1 has chosen). Drives stats, display name and portrait.")]
+        [SerializeField] private PokemonAdventure.ScriptableObjects.PokemonDefinition _playerDefinition;
+
         [Header("Unit Prefabs (optional — uses primitives if null)")]
         [SerializeField] private GameObject _playerPrefab;
         [SerializeField] private GameObject _hostilePrefab;
         [SerializeField] private GameObject _neutralPrefab;
         [SerializeField] private GameObject _friendlyNPCPrefab;
-
-        [Header("Sprite Animations (optional)")]
-        [Tooltip("Assign Charmander's AnimationSet to replace the blue capsule with sprite animation.")]
-        [SerializeField] private PokemonAnimationSet _playerAnimSet;
 
         [Header("Spawn Positions (Grid Coordinates)")]
         [SerializeField] private Vector2Int _playerSpawn        = new(5, 5);
@@ -81,7 +81,7 @@ namespace PokemonAdventure.World
         /// <summary>Adds GridOverlay to the scene if not already present.</summary>
         private void EnsureGridOverlay()
         {
-            if (FindFirstObjectByType<Grid.GridOverlay>() != null) return;
+            if (FindAnyObjectByType<Grid.GridOverlay>() != null) return;
 
             var go = new GameObject("GridOverlay");
             go.AddComponent<Grid.GridOverlay>();
@@ -91,7 +91,7 @@ namespace PokemonAdventure.World
         /// <summary>Adds DebugGridRenderer to the scene if not already present.</summary>
         private void EnsureDebugGridRenderer()
         {
-            if (FindFirstObjectByType<DebugGridRenderer>() != null) return;
+            if (FindAnyObjectByType<DebugGridRenderer>() != null) return;
 
             var go = new GameObject("DebugGridRenderer");
             go.AddComponent<DebugGridRenderer>();
@@ -122,7 +122,7 @@ namespace PokemonAdventure.World
             SpawnFriendlyNPC();
 
             // Force true top-down view regardless of whatever angle is saved in the scene
-            var cam = FindFirstObjectByType<OverworldCameraController>();
+            var cam = FindAnyObjectByType<OverworldCameraController>();
             if (cam != null)
             {
                 cam.SetTarget(playerGo.transform);
@@ -134,33 +134,41 @@ namespace PokemonAdventure.World
 
         private GameObject SpawnPlayerUnit()
         {
-            var go = SpawnUnit(_playerPrefab, "TestPlayer", _playerSpawn, Color.blue);
+            string unitName = _playerDefinition != null ? _playerDefinition.PokemonName : "TestPlayer";
+            var go = SpawnUnit(_playerPrefab, unitName, _playerSpawn, Color.blue);
 
-            // Unit + controller first so GetComponent<BaseUnit>() works in movement controllers
-            go.AddComponent<PlayerUnit>();
+            // Unit component first — Initialize() must run before movement controllers query stats
+            var playerUnit = go.AddComponent<PlayerUnit>();
+            if (_playerDefinition != null)
+                playerUnit.Initialize(_playerDefinition);
+
             go.AddComponent<PlayerUnitController>();
+
+            // Wire into session slot 0 so the rest of the systems know who Slot 0 controls
+            var session = ServiceLocator.TryGet(out Multiplayer.MultiplayerSessionManager mgr) ? mgr : null;
+            session?.AssignUnitToSlot(0, playerUnit, _playerDefinition);
 
             // CapsuleCollider for general physics interactions
             var col = go.AddComponent<CapsuleCollider>();
             col.height = 1f;
             col.radius = 0.3f;
 
-            // Replace blue capsule mesh with sprite animation if an AnimSet is assigned
-            if (_playerAnimSet != null)
+            // Replace primitive mesh with sprite animation from the definition
+            var animSet = _playerDefinition != null ? _playerDefinition.AnimationSet : null;
+            if (animSet != null)
             {
                 var mr = go.GetComponent<MeshRenderer>();
                 if (mr != null) mr.enabled = false;
 
-                // Sprite lies flat on the grid — just above the surface to avoid z-fighting.
                 var spriteGo = new GameObject("Sprite");
                 spriteGo.transform.SetParent(go.transform, false);
                 spriteGo.transform.localPosition = new Vector3(0f, 0.03f, 0f);
 
-                var sr           = spriteGo.AddComponent<SpriteRenderer>();
-                sr.sortingOrder  = 1;
+                var sr          = spriteGo.AddComponent<SpriteRenderer>();
+                sr.sortingOrder = 1;
 
                 var animator     = spriteGo.AddComponent<PokemonSpriteAnimator>();
-                animator.AnimSet = _playerAnimSet;
+                animator.AnimSet = animSet;
             }
 
             // AP tracking — needed by CombatMovementController and BasicAttackController

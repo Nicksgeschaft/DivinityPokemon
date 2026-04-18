@@ -1,0 +1,18 @@
+fileFormatVersion: 2
+guid: 4a1a62693c28c7d459ea8a481a8a9714
+MonoImporter:
+  externalObjects: {}
+  serializedVersion: 2
+  defaultReferences: []
+  executionOrder: 0
+  icon: {instanceID: 0}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 256188
+  packageName: Skill Icon Package
+  packageVersion: 1.0
+  assetPath: Assets/SkillIconPackage/script/TabButton.cs
+  uploadId: 599649

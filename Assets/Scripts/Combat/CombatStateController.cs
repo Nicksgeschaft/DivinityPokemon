@@ -54,7 +54,7 @@ namespace PokemonAdventure.Combat
             _stateManager = ServiceLocator.Get<GameStateManager>();
 
             if (_gridOverlay == null)
-                _gridOverlay = FindFirstObjectByType<Grid.GridOverlay>();
+                _gridOverlay = FindAnyObjectByType<Grid.GridOverlay>();
 
             // Turn loop events
             GameEventBus.Subscribe<TurnEndedEvent>(OnTurnEnded);

@@ -53,8 +53,8 @@ namespace PokemonAdventure.World
 
         private void Start()
         {
-            _stateManager     = ServiceLocator.Get<GameStateManager>();
-            _combatController = ServiceLocator.Get<CombatStateController>();
+            _stateManager = ServiceLocator.Get<GameStateManager>();
+            ServiceLocator.TryGet(out _combatController);
 
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
         }

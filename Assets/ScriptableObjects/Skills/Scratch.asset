@@ -12,8 +12,8 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa2747e2e0f68e446b216550ef510c38, type: 3}
   m_Name: Scratch
   m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.SkillDefinition
-  SkillId: skill_unnamed
-  SkillName: Tackle
+  SkillId: skill_scratch
+  SkillName: Scratch
   Description: "Die Attacke sch\xE4digt den Gegner ohne zus\xE4tzliche Effekte. "
   SkillType: 0
   Category: 0

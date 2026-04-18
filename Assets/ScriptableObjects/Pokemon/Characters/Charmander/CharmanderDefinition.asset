@@ -33,49 +33,51 @@ MonoBehaviour:
     BonusAttack: 0
     BonusSpecialAttack: 0
     BonusInitiative: 0
-  StartingSkills: []
+  StartingSkills:
+  - {fileID: 11400000, guid: bc06dc4fc32e17048b44b1ad737b32af, type: 2}
+  - {fileID: 11400000, guid: e2e7caed5a5fa664bae799ae1e264fc7, type: 2}
   LearnableSkills: []
   UnitPrefab: {fileID: 0}
   AnimationSet: {fileID: 11400000, guid: ab128aa8a517aa8479d4f6c85152a8c7, type: 2}
   EmotionPortraits:
   - Emotion: 0
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1071675011, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 1
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -829789800, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 2
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -203922545, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 3
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1295909836, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 4
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1030699980, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 5
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -244157283, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 6
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -2007681043, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 7
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 1814797211, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 8
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -933650415, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 9
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 666500102, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 10
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1183208137, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 11
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 1072025720, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 12
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -902120897, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 13
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1239126520, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 14
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -1939562200, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 15
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 1350903211, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 16
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 1367881533, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 17
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 1125900768, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 18
-    Portrait: {fileID: 0}
+    Portrait: {fileID: 176870348, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   - Emotion: 19
-    Portrait: {fileID: 0}
+    Portrait: {fileID: -400344631, guid: c287fa56a20b06344a6c8b8f7ca09c61, type: 3}
   CryClip: {fileID: 0}

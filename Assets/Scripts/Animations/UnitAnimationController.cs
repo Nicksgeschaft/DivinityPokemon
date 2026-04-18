@@ -65,6 +65,15 @@ namespace PokemonAdventure.Animations
 
         private void Start()
         {
+            // Second chance — EnemySetup creates the animator child in Start(),
+            // which may run before or after this Start(). Re-wire if needed.
+            if (_animator == null)
+            {
+                _animator = GetComponentInChildren<PokemonSpriteAnimator>();
+                if (_animator != null)
+                    _animator.OnAnimationComplete += OnCurrentAnimDone;
+            }
+
             GameEventBus.Subscribe<DamageDealtEvent>(OnDamageDealt);
             GameEventBus.Subscribe<UnitDiedEvent>(OnUnitDied);
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);

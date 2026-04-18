@@ -305,13 +305,14 @@ namespace PokemonAdventure.Combat
         private static PokemonType GetPrimaryType(BaseUnit unit)
         {
             if (unit is Units.PlayerUnit pu && pu.Definition != null) return pu.Definition.PrimaryType;
-            if (unit is AI.EnemyUnit eu && eu.Archetype != null)       return PokemonType.Normal;
+            if (unit is AI.EnemyUnit    eu)                           return eu.PrimaryType;
             return PokemonType.Normal;
         }
 
         private static PokemonType GetSecondaryType(BaseUnit unit)
         {
             if (unit is Units.PlayerUnit pu && pu.Definition != null) return pu.Definition.SecondaryType;
+            if (unit is AI.EnemyUnit    eu)                           return eu.SecondaryType;
             return PokemonType.None;
         }
     }

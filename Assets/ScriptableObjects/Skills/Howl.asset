@@ -1,0 +1,35 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa2747e2e0f68e446b216550ef510c38, type: 3}
+  m_Name: Howl
+  m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.SkillDefinition
+  SkillId: skill_howl
+  SkillName: Howl
+  Description: "Die Attacke sch\xE4digt den Gegner ohne zus\xE4tzliche Effekte. "
+  SkillType: 0
+  Category: 2
+  APCost: 1
+  Cooldown: 1
+  Accuracy: 100
+  Range: 1
+  Targeting: 8
+  AreaShape: 1
+  AoERadius: 3
+  StatRequirements: []
+  UsableOutsideCombat: 1
+  OverworldEffectDescription: 
+  VFXPrefab: {fileID: 0}
+  SoundEffect: {fileID: 0}
+  CastAnimation: 22
+  SkillIcon: {fileID: 21300000, guid: d17ae8de141cb9f4ebc2f887feebea49, type: 3}
+  SkillBarBackground: {fileID: 21300000, guid: b4d588fe7575919468cda4d717882d56, type: 3}
+  Effects: []

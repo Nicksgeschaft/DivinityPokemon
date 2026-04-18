@@ -46,6 +46,10 @@ namespace PokemonAdventure.AI
         {
             base.Awake();
             _targetSelector = new AITargetSelector();
+
+            // Auto-read archetype from EnemyUnit if not explicitly set in Inspector
+            if (_archetype == null)
+                _archetype = GetComponent<EnemyUnit>()?.Archetype;
         }
 
         private void Start()
@@ -189,19 +193,35 @@ namespace PokemonAdventure.AI
         [Header("Enemy Configuration")]
         [SerializeField] private EnemyArchetypeDefinition _archetype;
 
-        public EnemyArchetypeDefinition Archetype => _archetype;
+        public EnemyArchetypeDefinition Archetype     => _archetype;
+        public PokemonType              PrimaryType   => _archetype?.PrimaryType   ?? PokemonType.Normal;
+        public PokemonType              SecondaryType => _archetype?.SecondaryType ?? PokemonType.None;
 
         protected override void Awake()
         {
-            // Establish faction before base.Awake() so SightTrigger faction checks work
-            // when this unit is spawned via AddComponent at runtime.
             SetFaction(UnitFaction.Hostile);
 
-            // Copy base stats from archetype if assigned
             if (_archetype != null)
+            {
                 _stats = _archetype.BaseStats;
+                SetDisplayName(_archetype.EnemyName);
+            }
 
             base.Awake();
+        }
+
+        /// <summary>
+        /// Applies an archetype at runtime (used by EnemyPrefabController after AddComponent).
+        /// Re-initializes RuntimeState so HP/armor reflect the archetype's stats.
+        /// </summary>
+        public void Initialize(EnemyArchetypeDefinition archetype)
+        {
+            _archetype = archetype;
+            if (archetype == null) return;
+            _stats = archetype.BaseStats;
+            SetFaction(UnitFaction.Hostile);
+            SetDisplayName(archetype.EnemyName);
+            RuntimeState?.Initialize(_stats);
         }
     }
 }

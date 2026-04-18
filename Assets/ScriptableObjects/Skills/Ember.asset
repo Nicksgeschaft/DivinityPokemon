@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fa2747e2e0f68e446b216550ef510c38, type: 3}
   m_Name: Ember
   m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.SkillDefinition
-  SkillId: skill_unnamed
-  SkillName: Tackle
-  Description: "Die Attacke sch\xE4digt den Gegner ohne zus\xE4tzliche Effekte. "
+  SkillId: skill_ember
+  SkillName: Ember
+  Description: Schadet dem Ziel mit Feuer.
   SkillType: 1
   Category: 1
   APCost: 2
@@ -27,9 +27,9 @@ MonoBehaviour:
   StatRequirements: []
   UsableOutsideCombat: 0
   OverworldEffectDescription: 
-  VFXPrefab: {fileID: 0}
-  SoundEffect: {fileID: 0}
+  VFXPrefab: {fileID: 4748681987041982144, guid: db8114dc17e3cfc45a76a0373357b32b, type: 3}
+  SoundEffect: {fileID: 8300000, guid: 38922381de711bf41bfee9bea5d6b48d, type: 3}
   CastAnimation: 2
-  SkillIcon: {fileID: 21300000, guid: 1192d9a0975826b4ca8909d441c2ac74, type: 3}
+  SkillIcon: {fileID: 21300000, guid: 9356ce79c4e21394ca4dd23d07f12f60, type: 3}
   SkillBarBackground: {fileID: 21300000, guid: b4d588fe7575919468cda4d717882d56, type: 3}
   Effects: []

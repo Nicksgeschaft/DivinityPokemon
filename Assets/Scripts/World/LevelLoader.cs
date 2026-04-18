@@ -69,6 +69,7 @@ namespace PokemonAdventure.World
             _entityRoot = new GameObject("Entities").transform;
 
             EnsureCombatStateController();
+            EnsureGridOverlay();
             BuildTiles();
             BuildEntities();
             PositionCamera();
@@ -195,6 +196,7 @@ namespace PokemonAdventure.World
             go.AddComponent<CombatMovementController>();
             go.AddComponent<BasicAttackController>();
             go.AddComponent<OverworldMovementController>();
+            go.AddComponent<UnitAnimationController>();
 
             // Sprite from definition
             var animSet = def?.AnimationSet;
@@ -253,6 +255,14 @@ namespace PokemonAdventure.World
             var go  = new GameObject("CombatStateController");
             var csc = go.AddComponent<CombatStateController>();
             ServiceLocator.Register(csc);
+        }
+
+        private void EnsureGridOverlay()
+        {
+            if (FindAnyObjectByType<Grid.GridOverlay>() != null) return;
+
+            var go = new GameObject("GridOverlay");
+            go.AddComponent<Grid.GridOverlay>();
         }
 
         private void PositionCamera()

@@ -145,13 +145,29 @@ namespace PokemonAdventure.Combat
 
         private void ExecuteAttack(BaseUnit target)
         {
-            if (!_ap.SpendAP(AttackAPCost)) return; // Double-check AP
+            if (!_ap.SpendAP(AttackAPCost)) return;
 
-            float damage = _unit.Stats.EffectiveAttack;
+            float damage     = _unit.Stats.EffectiveAttack;
+            float hpBefore   = target.RuntimeState.CurrentHP;
+            float physBefore = target.RuntimeState.CurrentPhysicalArmor;
+            float specBefore = target.RuntimeState.CurrentSpecialArmor;
+
             target.TakeDamage(damage, DamageType.Physical, _unit);
 
-            Debug.Log($"[BasicAttackController] {_unit.DisplayName} → {target.DisplayName}: " +
-                      $"{damage:F0} Physical (1 AP spent).");
+            float armorAbsorbed = (physBefore - target.RuntimeState.CurrentPhysicalArmor)
+                                + (specBefore - target.RuntimeState.CurrentSpecialArmor);
+            float hpDamage      = hpBefore - target.RuntimeState.CurrentHP;
+
+            GameEventBus.Publish(new DamageDealtEvent
+            {
+                AttackerUnitId = _unit.UnitId,
+                DefenderUnitId = target.UnitId,
+                SkillId        = "BasicAttack",
+                FinalDamage    = damage,
+                ArmorAbsorbed  = armorAbsorbed,
+                HPDamage       = hpDamage,
+                Effectiveness  = EffectivenessCategory.Normal
+            });
 
             GameEventBus.Publish(new ActionExecutedEvent
             {

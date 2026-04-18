@@ -77,6 +77,15 @@ namespace PokemonAdventure.UI
         {
             _inCombat = evt.NewState == GameState.Combat;
             _statusBarsUI?.SetCombatMode(_inCombat);
+
+            // Ensure tracked unit is wired BEFORE making the combat UI visible,
+            // so the AP bar shows the correct state in OnEnable rather than 0.
+            if (_inCombat && _trackedUnit == null)
+            {
+                var player = FindAnyObjectByType<PlayerUnit>();
+                if (player != null) SetTrackedUnit(player);
+            }
+
             SetCombatOnlyRootsVisible(_inCombat);
         }
 

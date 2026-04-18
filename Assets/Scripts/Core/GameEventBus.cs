@@ -220,6 +220,18 @@ namespace PokemonAdventure.Core
         public int    Delta;
     }
 
+    // ── Skill Preview (Overworld) ─────────────────────────────────────────────
+
+    /// <summary>
+    /// Published when the player hovers over or selects a skill slot outside combat.
+    /// An empty SkillId means "clear the preview".
+    /// </summary>
+    public struct SkillPreviewEvent
+    {
+        public string CasterUnitId;
+        public string SkillId; // empty = clear
+    }
+
     // ── Damage ────────────────────────────────────────────────────────────────
 
     public struct DamageDealtEvent

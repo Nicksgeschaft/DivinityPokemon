@@ -145,7 +145,7 @@ namespace PokemonAdventure.Grid
             if (_gridManager != null)
             {
                 var worldPos = _gridManager.GetWorldPosition(pos);
-                worldPos.y  += 0.02f; // Tiny offset to avoid z-fighting with ground
+                worldPos.y  += 0.06f; // Above tile elevation (0.02) to avoid z-fighting
                 tile.transform.position = worldPos;
             }
 
@@ -160,9 +160,10 @@ namespace PokemonAdventure.Grid
             var r = tile.GetComponent<Renderer>();
             if (r == null) return;
 
-            // Use MaterialPropertyBlock to avoid extra material allocations
             var block = new MaterialPropertyBlock();
             r.GetPropertyBlock(block);
+            // URP Unlit uses _BaseColor; legacy/Sprites shaders use _Color — set both
+            block.SetColor("_BaseColor", color);
             block.SetColor("_Color", color);
             r.SetPropertyBlock(block);
         }
@@ -184,19 +185,30 @@ namespace PokemonAdventure.Grid
             // Lay it flat on the XZ plane
             tile.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
 
-            // Match the cell footprint (95 % to leave a 1-pixel gap between tiles)
-            float size = (_gridManager?.CellSize ?? 1f) * 0.95f;
+            float size = (_gridManager?.CellSize ?? 1f) * 0.98f;
             tile.transform.localScale = new Vector3(size, size, 1f);
 
             // Remove the MeshCollider — overlay tiles must not interfere with raycasts
             var col = tile.GetComponent<Collider>();
             if (col != null) DestroyImmediate(col);
 
-            // Assign a transparent unlit material (Sprites/Default is always available)
             if (_runtimeMaterial == null)
             {
-                var shader = Shader.Find("Sprites/Default");
-                _runtimeMaterial = new Material(shader != null ? shader : Shader.Find("Standard"));
+                var shader = Shader.Find("Universal Render Pipeline/Unlit")
+                          ?? Shader.Find("Unlit/Transparent")
+                          ?? Shader.Find("Standard");
+                _runtimeMaterial = new Material(shader);
+
+                // Force alpha-blending regardless of which shader was found
+                _runtimeMaterial.SetFloat("_Surface", 1f);
+                _runtimeMaterial.SetFloat("_Blend",   0f);
+                _runtimeMaterial.SetInt("_SrcBlend",  (int)UnityEngine.Rendering.BlendMode.SrcAlpha);
+                _runtimeMaterial.SetInt("_DstBlend",  (int)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+                _runtimeMaterial.SetInt("_ZWrite",    0);
+                _runtimeMaterial.SetFloat("_Mode",    3f); // Standard transparent mode
+                _runtimeMaterial.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+                _runtimeMaterial.EnableKeyword("_ALPHABLEND_ON");
+                _runtimeMaterial.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
             }
             tile.GetComponent<Renderer>().material = _runtimeMaterial;
 

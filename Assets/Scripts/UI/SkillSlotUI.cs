@@ -1,7 +1,10 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using TMPro;
+using PokemonAdventure.Core;
 using PokemonAdventure.ScriptableObjects;
+using PokemonAdventure.Units;
 
 namespace PokemonAdventure.UI
 {
@@ -9,7 +12,7 @@ namespace PokemonAdventure.UI
     // Manages background sprite, ability icon, hotkey label, selected highlight,
     // and a radial clock-style cooldown overlay that ticks down turn by turn.
     [RequireComponent(typeof(Button))]
-    public class SkillSlotUI : MonoBehaviour
+    public class SkillSlotUI : MonoBehaviour, IPointerEnterHandler, IPointerExitHandler
     {
         [Header("Slot Visuals")]
         [SerializeField] private Image           _slotBackground;
@@ -115,6 +118,24 @@ namespace PokemonAdventure.UI
                 _cooldownText.gameObject.SetActive(false);
                 _cooldownText.text = string.Empty;
             }
+        }
+
+        // ── Pointer Events (overworld skill preview) ──────────────────────────
+
+        public void OnPointerEnter(PointerEventData _)
+        {
+            if (AssignedSkill == null) return;
+            var caster = FindAnyObjectByType<PlayerUnit>();
+            GameEventBus.Publish(new SkillPreviewEvent
+            {
+                CasterUnitId = caster != null ? caster.UnitId : string.Empty,
+                SkillId      = AssignedSkill.SkillId,
+            });
+        }
+
+        public void OnPointerExit(PointerEventData _)
+        {
+            GameEventBus.Publish(new SkillPreviewEvent { SkillId = string.Empty });
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

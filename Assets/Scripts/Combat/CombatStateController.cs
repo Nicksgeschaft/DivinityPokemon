@@ -151,8 +151,19 @@ namespace PokemonAdventure.Combat
 
             var dead = _activeEncounter.Participants
                        .FirstOrDefault(u => u.UnitId == evt.UnitId);
-            if (dead != null)
-                _turnManager.RemoveUnit(dead);
+            if (dead == null) return;
+
+            _turnManager.RemoveUnit(dead);
+
+            // Only destroy hostile units — friendly deaths stay for the results screen
+            if (dead.Faction == UnitFaction.Hostile)
+                StartCoroutine(DestroyAfterDelay(dead.gameObject, _transitionOutDuration));
+        }
+
+        private static IEnumerator DestroyAfterDelay(GameObject go, float delay)
+        {
+            yield return new WaitForSeconds(delay);
+            if (go != null) Destroy(go);
         }
 
         private void OnCombatEnded(CombatEndedEvent evt)

@@ -92,46 +92,38 @@ namespace PokemonAdventure.AI
             var encounter = GetCombatController()?.ActiveEncounter;
             if (encounter == null) { RequestEndTurn(); yield break; }
 
-            // Gather potential targets
             var targets = _targetSelector.GetPrioritisedTargets(
-                Unit, encounter, _archetype?.TargetPriority
-                    ?? AITargetPriority.LowestHP);
+                Unit, encounter, _archetype?.TargetPriority ?? AITargetPriority.LowestHP);
 
             if (targets.Count == 0) { RequestEndTurn(); yield break; }
 
             var primaryTarget = targets[0];
 
-            // Spend AP: try to act until AP runs out or no valid actions remain
-            int maxIterations = RuntimeUnitState.MaxAPCap; // Safety limit
-            for (int i = 0; i < maxIterations && state.CurrentAP > 0; i++)
+            // ── Step 1: Move once toward target if not already adjacent ────────
+            if (_gridManager != null)
             {
-                bool acted = false;
+                int dist = GridUtility.ManhattanDistance(
+                    state.GridPosition, primaryTarget.RuntimeState.GridPosition);
 
-                // 1. Try to use a skill
-                // TODO: Implement skill selection via archetype.SkillPreference
-                // For now, attempt a basic attack if target is adjacent
-                if (_gridManager != null)
+                if (dist > 1)
                 {
-                    int dist = GridUtility.ManhattanDistance(
-                        Unit.RuntimeState.GridPosition,
-                        primaryTarget.RuntimeState.GridPosition);
-
-                    if (dist <= 1 && state.CanAfford(1))
-                    {
-                        ExecuteBasicAttack(primaryTarget);
-                        state.TrySpendAP(1);
-                        acted = true;
-                    }
-                    // 2. Otherwise, move toward target
-                    else if (!state.HasMovedThisTurn && _gridManager != null)
-                    {
-                        yield return StartCoroutine(MoveTowardTarget(primaryTarget));
-                        acted = true;
-                    }
+                    yield return StartCoroutine(MoveTowardTarget(primaryTarget));
+                    yield return new WaitForSeconds(_actionDelay);
                 }
+            }
 
-                if (!acted) break;
-                yield return new WaitForSeconds(_actionDelay);
+            // ── Step 2: Attack once if adjacent and can afford it ─────────────
+            if (_gridManager != null && state.CanAfford(1))
+            {
+                int dist = GridUtility.ManhattanDistance(
+                    state.GridPosition, primaryTarget.RuntimeState.GridPosition);
+
+                if (dist <= 1)
+                {
+                    ExecuteBasicAttack(primaryTarget);
+                    state.TrySpendAP(1);
+                    yield return new WaitForSeconds(_actionDelay);
+                }
             }
 
             RequestEndTurn();
@@ -167,12 +159,29 @@ namespace PokemonAdventure.AI
 
         private void ExecuteBasicAttack(BaseUnit target)
         {
-            // TODO: Replace with proper SkillResolver once SkillDefinition resolution is implemented
-            float rawDamage = Unit.Stats.EffectiveAttack;
+            float rawDamage  = Unit.Stats.EffectiveAttack;
+
+            // Snapshot pre-damage values so DamageDealtEvent carries correct deltas
+            float hpBefore   = target.RuntimeState.CurrentHP;
+            float physBefore = target.RuntimeState.CurrentPhysicalArmor;
+            float specBefore = target.RuntimeState.CurrentSpecialArmor;
+
             target.TakeDamage(rawDamage, Data.DamageType.Physical, Unit);
 
-            Debug.Log($"[AIController] {Unit.DisplayName} attacks {target.DisplayName} " +
-                      $"for {rawDamage:F0} Physical damage.");
+            float armorAbsorbed = (physBefore - target.RuntimeState.CurrentPhysicalArmor)
+                                + (specBefore - target.RuntimeState.CurrentSpecialArmor);
+            float hpDamage      = hpBefore - target.RuntimeState.CurrentHP;
+
+            GameEventBus.Publish(new DamageDealtEvent
+            {
+                AttackerUnitId = Unit.UnitId,
+                DefenderUnitId = target.UnitId,
+                SkillId        = "BasicAttack",
+                FinalDamage    = rawDamage,
+                ArmorAbsorbed  = armorAbsorbed,
+                HPDamage       = hpDamage,
+                Effectiveness  = Combat.EffectivenessCategory.Normal
+            });
 
             GameEventBus.Publish(new ActionExecutedEvent
             {
@@ -180,6 +189,9 @@ namespace PokemonAdventure.AI
                 ActionName  = "BasicAttack",
                 APSpent     = 1
             });
+
+            Debug.Log($"[AIController] {Unit.DisplayName} → {target.DisplayName}: " +
+                      $"{hpDamage:F0} HP dmg, {armorAbsorbed:F0} armor absorbed.");
         }
     }
 

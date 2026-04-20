@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using UnityEngine;
 using PokemonAdventure.Data;
 
 namespace PokemonAdventure.Combat
@@ -135,14 +136,12 @@ namespace PokemonAdventure.Combat
     }
 
     /// <summary>
-    /// Default formula: effect.Power × (AttackStat / ScalingFactor).
-    /// Defense does NOT divide here — it scales armor bars instead.
-    /// ScalingFactor is the tuning lever; start at 10 and adjust per feel.
+    /// Default formula: Power + floor(AttackStat / 2).
+    /// Keeps damage numbers small and readable (2–6 range at low levels).
+    /// Defense scales armor bars, not damage reduction here.
     /// </summary>
     public sealed class DefaultDamageFormula : IDamageFormula
     {
-        public float ScalingFactor { get; set; } = 10f;
-
         public float Calculate(
             ScriptableObjects.SkillDefinition skill,
             ScriptableObjects.SkillEffect effect,
@@ -154,7 +153,7 @@ namespace PokemonAdventure.Combat
                 ? caster.Stats.EffectiveAttack
                 : caster.Stats.EffectiveSpecialAttack;
 
-            return effect.Power * (stat / ScalingFactor);
+            return effect.Power + Mathf.Floor(stat / 2f);
         }
     }
 }

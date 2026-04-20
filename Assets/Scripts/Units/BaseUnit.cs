@@ -89,6 +89,7 @@ namespace PokemonAdventure.Units
 
             // Register with the unit lookup service so other systems can find us by ID
             ServiceLocator.Get<UnitRegistry>()?.Register(this);
+            GameEventBus.Publish(new UnitRegisteredEvent { UnitId = _unitId, Faction = _faction });
         }
 
         protected virtual void OnDestroy()
@@ -220,6 +221,16 @@ namespace PokemonAdventure.Units
 
             var cell = _gridManager.GetCell(targetCell);
             cell?.SetOccupied(this);
+        }
+
+        /// <summary>
+        /// Snaps the visual position to the exact centre of the unit's current grid cell.
+        /// Fixes drift caused by movement coroutines interrupted mid-step.
+        /// </summary>
+        public void SnapToGridPosition()
+        {
+            if (_gridManager == null) return;
+            transform.position = _gridManager.GetWorldPosition(_runtimeState.GridPosition);
         }
 
         // ── Protected Helpers ─────────────────────────────────────────────────

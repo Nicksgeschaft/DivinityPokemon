@@ -25,11 +25,39 @@ MonoBehaviour:
   AreaShape: 0
   AoERadius: 0
   StatRequirements: []
-  UsableOutsideCombat: 0
+  UsableOutsideCombat: 1
   OverworldEffectDescription: 
   VFXPrefab: {fileID: 4748681987041982144, guid: db8114dc17e3cfc45a76a0373357b32b, type: 3}
+  VFXOffset: {x: 0, y: 0.5, z: 0}
   SoundEffect: {fileID: 8300000, guid: 38922381de711bf41bfee9bea5d6b48d, type: 3}
-  CastAnimation: 2
+  SoundEffectDuration: 0
+  CastAnimation: 4
   SkillIcon: {fileID: 21300000, guid: 9356ce79c4e21394ca4dd23d07f12f60, type: 3}
-  SkillBarBackground: {fileID: 21300000, guid: b4d588fe7575919468cda4d717882d56, type: 3}
-  Effects: []
+  SkillBarBackground: {fileID: 21300000, guid: b448a40e767c62d4fbf3bc83ca73a10b, type: 3}
+  BaseDamage: 4
+  BaseDamageType: 1
+  Effects:
+  - EffectType: 0
+    Target: 0
+    ApplyChance: 100
+    Power: 4
+    DamageCategory: 1
+    StatusType: 0
+    StatusDuration: 2
+    StatusMagnitude: 2
+    SurfaceToApply: 0
+    SurfaceDuration: 3
+    SurfacePrefab: {fileID: 0}
+    StatModifiers: []
+  - EffectType: 3
+    Target: 0
+    ApplyChance: 10
+    Power: 40
+    DamageCategory: 0
+    StatusType: 0
+    StatusDuration: 2
+    StatusMagnitude: 2
+    SurfaceToApply: 0
+    SurfaceDuration: 3
+    SurfacePrefab: {fileID: 0}
+    StatModifiers: []

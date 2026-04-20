@@ -1,0 +1,71 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: fa2747e2e0f68e446b216550ef510c38, type: 3}
+  m_Name: Bubble
+  m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.SkillDefinition
+  SkillId: skill_bubble
+  SkillName: Bubble
+  Description: "Schie\xDFt Blubbern die den Gegner verlangsamen"
+  SkillType: 2
+  Category: 1
+  APCost: 2
+  Cooldown: 4
+  Accuracy: 100
+  Range: 3
+  Targeting: 1
+  AreaShape: 0
+  AoERadius: 0
+  StatRequirements: []
+  UsableOutsideCombat: 1
+  OverworldEffectDescription: 
+  VFXPrefab: {fileID: 4748681987041982144, guid: aef1dfb4af41b774db9b1f55c249440d, type: 3}
+  VFXOffset: {x: 0, y: 0.5, z: 0}
+  SoundEffect: {fileID: 8300000, guid: 5387c44ceef83c247ac09b089137377f, type: 3}
+  SoundEffectDuration: 0
+  CastAnimation: 4
+  SkillIcon: {fileID: 21300000, guid: 1f2952d22ede9c74982affb9f1f65942, type: 3}
+  SkillBarBackground: {fileID: 21300000, guid: 7193a23373ed456498b9399b1429d234, type: 3}
+  BaseDamage: 4
+  BaseDamageType: 1
+  Effects:
+  - EffectType: 4
+    Target: 0
+    ApplyChance: 10
+    Power: 40
+    DamageCategory: 0
+    StatusType: 0
+    StatusDuration: 2
+    StatusMagnitude: 0
+    SurfaceToApply: 0
+    SurfaceDuration: 3
+    SurfacePrefab: {fileID: 0}
+    StatModifiers:
+    - Stat: 5
+      Value: -20
+      IsPercent: 0
+      Duration: 2
+  - EffectType: 0
+    Target: 0
+    ApplyChance: 100
+    Power: 4
+    DamageCategory: 1
+    StatusType: 0
+    StatusDuration: 2
+    StatusMagnitude: 0
+    SurfaceToApply: 0
+    SurfaceDuration: 3
+    SurfacePrefab: {fileID: 0}
+    StatModifiers:
+    - Stat: 5
+      Value: -20
+      IsPercent: 0
+      Duration: 2

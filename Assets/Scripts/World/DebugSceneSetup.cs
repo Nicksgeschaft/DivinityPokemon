@@ -36,6 +36,10 @@ namespace PokemonAdventure.World
         [Tooltip("Glumanda (or whichever Pokémon Player 1 has chosen). Drives stats, display name and portrait.")]
         [SerializeField] private PokemonAdventure.ScriptableObjects.PokemonDefinition _playerDefinition;
 
+        [Header("Combat")]
+        [Tooltip("Skill used when clicking an adjacent enemy with no skill selected.")]
+        [SerializeField] private PokemonAdventure.ScriptableObjects.SkillDefinition _basicAttackSkill;
+
         [Header("Unit Prefabs (optional — uses primitives if null)")]
         [SerializeField] private GameObject _playerPrefab;
         [SerializeField] private GameObject _hostilePrefab;
@@ -148,6 +152,9 @@ namespace PokemonAdventure.World
             var session = ServiceLocator.TryGet(out Multiplayer.MultiplayerSessionManager mgr) ? mgr : null;
             session?.AssignUnitToSlot(0, playerUnit, _playerDefinition);
 
+            // Make this the active overworld unit (enables input in OverworldMovementController)
+            GameEventBus.Publish(new ActiveUnitChangedEvent { UnitId = playerUnit.UnitId });
+
             // CapsuleCollider for general physics interactions
             var col = go.AddComponent<CapsuleCollider>();
             col.height = 1f;
@@ -176,7 +183,7 @@ namespace PokemonAdventure.World
 
             // Movement / attack controllers — order matters: unit must exist first
             go.AddComponent<Movement.CombatMovementController>();
-            go.AddComponent<Combat.BasicAttackController>();
+            go.AddComponent<Combat.BasicAttackController>().Initialize(_basicAttackSkill);
             go.AddComponent<OverworldMovementController>();
 
             Log($"Spawned PlayerUnit at {_playerSpawn}");

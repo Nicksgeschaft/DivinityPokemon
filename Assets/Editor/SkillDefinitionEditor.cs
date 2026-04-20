@@ -40,8 +40,9 @@ namespace PokemonAdventure.Editor
         private bool _foldIdentity  = true;
         private bool _foldType      = true;
         private bool _foldAPRange   = true;
+        private bool _foldDamage    = true;
         private bool _foldVisuals   = true;
-        private bool _foldEffects   = true;
+        private bool _foldEffects   = false;
         private bool _foldOther     = false;
 
         // Effect fold states — indexed by position; resized as list grows.
@@ -70,6 +71,7 @@ namespace PokemonAdventure.Editor
             _foldIdentity = DrawFoldout(_foldIdentity, "Identity",    () => DrawIdentity(skill));
             _foldType     = DrawFoldout(_foldType,     "Type & Category", DrawTypeCategory);
             _foldAPRange  = DrawFoldout(_foldAPRange,  "AP, Cooldown & Range", DrawAPCooldownRange);
+            _foldDamage   = DrawFoldout(_foldDamage,   "Quick Damage",     DrawDamage);
             _foldVisuals  = DrawFoldout(_foldVisuals,  "Visuals & Audio", DrawVisuals);
             _foldEffects  = DrawFoldout(_foldEffects,  "Effects",     DrawEffects);
             _foldOther    = DrawFoldout(_foldOther,    "Other",       DrawOther);
@@ -158,13 +160,31 @@ namespace PokemonAdventure.Editor
             EditorGUILayout.PropertyField(serializedObject.FindProperty("AoERadius"), new GUIContent("AoE Radius (cells)"));
         }
 
+        private void DrawDamage()
+        {
+            var skill = (SkillDefinition)target;
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("BaseDamage"),     new GUIContent("Base Damage"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("BaseDamageType"), new GUIContent("Damage Type"));
+
+            if (skill.Effects.Count > 0)
+                EditorGUILayout.HelpBox("Effects list is non-empty — Quick Damage is ignored at runtime.", MessageType.Info);
+            else if (skill.BaseDamage == 0)
+                EditorGUILayout.HelpBox("Base Damage is 0 and no Effects are defined — skill deals no damage.", MessageType.Warning);
+            else
+                EditorGUILayout.HelpBox($"Formula: {skill.BaseDamage} × (Attack / 10)", MessageType.None);
+        }
+
         private void DrawVisuals()
         {
             EditorGUILayout.PropertyField(serializedObject.FindProperty("SkillIcon"),         new GUIContent("Skill Icon"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("SkillBarBackground"), new GUIContent("Skill Bar Background"));
             EditorGUILayout.PropertyField(serializedObject.FindProperty("CastAnimation"),     new GUIContent("Cast Animation"));
+            EditorGUILayout.Space(4);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("VFXPrefab"),         new GUIContent("VFX Prefab (impact)"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("VFXOffset"),         new GUIContent("VFX Offset"));
+            EditorGUILayout.Space(4);
             EditorGUILayout.PropertyField(serializedObject.FindProperty("SoundEffect"),       new GUIContent("Sound Effect"));
+            EditorGUILayout.PropertyField(serializedObject.FindProperty("SoundEffectDuration"), new GUIContent("Sound Duration (s, 0 = full)"));
         }
 
         private void DrawOther()
@@ -260,6 +280,13 @@ namespace PokemonAdventure.Editor
                     // Target
                     EditorGUILayout.PropertyField(element.FindPropertyRelative("Target"));
 
+                    // Apply Chance — shown for all effect types
+                    Prop(element, "ApplyChance", "Apply Chance (%)");
+                    if (element.FindPropertyRelative("ApplyChance").intValue < 100)
+                        EditorGUILayout.HelpBox(
+                            $"This effect fires with {element.FindPropertyRelative("ApplyChance").intValue}% probability per hit.",
+                            MessageType.None);
+
                     EditorGUILayout.Space(2);
                     DrawEffectBody(effectType, element);
 
@@ -340,7 +367,6 @@ namespace PokemonAdventure.Editor
 
                 case SkillEffectType.ApplyStatus:
                     Prop(el, "StatusType",      "Status");
-                    Prop(el, "ApplyChance",     "Apply Chance (%)");
                     Prop(el, "StatusDuration",  "Duration (turns)");
                     Prop(el, "StatusMagnitude", "Magnitude");
                     var sType = (StatusEffectType)el.FindPropertyRelative("StatusType").enumValueIndex;

@@ -173,9 +173,7 @@ namespace PokemonAdventure.Animations
             if (_unit == null || evt.ActorUnitId != _unit.UnitId) return;
             if (_isKO) return;
 
-            // Resolve skill cast animation from SkillRegistry if possible,
-            // otherwise fall back to a generic Attack animation.
-            var skillAnim = ResolveSkillAnimation(evt.ActionName);
+            var skillAnim = ResolveSkillAnimation(evt.SkillId, evt.ActionName);
             PlayOnce(skillAnim, returnToIdle: true);
         }
 
@@ -213,11 +211,15 @@ namespace PokemonAdventure.Animations
             }
         }
 
-        private PokemonAnimId ResolveSkillAnimation(string skillName)
+        private PokemonAnimId ResolveSkillAnimation(string skillId, string skillName)
         {
             var registry = ServiceLocator.Get<SkillRegistry>();
             if (registry != null)
             {
+                // Prefer lookup by SkillId (reliable); fall back to name match
+                if (!string.IsNullOrEmpty(skillId) && registry.TryGet(skillId, out var byId))
+                    return byId.CastAnimation;
+
                 foreach (var skill in registry.All)
                 {
                     if (skill != null && skill.SkillName == skillName)

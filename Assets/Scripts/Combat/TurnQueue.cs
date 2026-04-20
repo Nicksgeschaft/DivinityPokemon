@@ -102,6 +102,20 @@ namespace PokemonAdventure.Combat
             Debug.Log($"[TurnQueue] {unit.DisplayName} joined combat mid-round at queue pos {insertIndex}.");
         }
 
+        /// <summary>
+        /// Adds a unit that is joining combat mid-round by entering the combat zone.
+        /// Placed at the END of the current round — acts after everyone already queued.
+        /// Added to the participant list so future rounds include them at correct initiative.
+        /// </summary>
+        public void AddUnitAtEndOfRound(BaseUnit unit)
+        {
+            if (unit == null || _participants.Contains(unit)) return;
+
+            _participants.Add(unit);
+            _queue.Add(unit);
+            Debug.Log($"[TurnQueue] {unit.DisplayName} joined combat — placed last in current round.");
+        }
+
         // ── Delay Turn ────────────────────────────────────────────────────────
 
         /// <summary>

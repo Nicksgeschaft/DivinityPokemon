@@ -80,7 +80,15 @@ namespace PokemonAdventure.ScriptableObjects
         [Header("Visuals & Audio")]
         [Tooltip("Spawned at the impact point on skill resolution.")]
         public GameObject VFXPrefab;
-        public AudioClip  SoundEffect;
+
+        [Tooltip("Local offset applied on top of the target world position when spawning VFX. " +
+                 "Use Y to raise the effect above the ground.")]
+        public Vector3 VFXOffset = new Vector3(0f, 0.5f, 0f);
+
+        public AudioClip SoundEffect;
+
+        [Tooltip("How many seconds the sound plays. 0 = play the full clip.")]
+        [Min(0f)] public float SoundEffectDuration = 0f;
 
         [Tooltip("Animation the caster plays when this skill is used.")]
         public PokemonAnimId CastAnimation = PokemonAnimId.Attack;
@@ -92,11 +100,20 @@ namespace PokemonAdventure.ScriptableObjects
                  "Overrides the automatic type-colour background when set.")]
         public Sprite SkillBarBackground;
 
+        // ── Quick Damage ──────────────────────────────────────────────────────
+
+        [Header("Quick Damage")]
+        [Tooltip("Strength of this move — like Pokémon base power (e.g. 40 = weak, 80 = medium, 120 = strong). " +
+                 "Used when the Effects list is empty. Formula: Strength × (AttackStat / 10). 0 = no damage.")]
+        [Min(0)] public int BaseDamage = 0;
+
+        [Tooltip("Physical = uses Attack stat and hits PhysArmor first.\nSpecial = uses Sp.Atk and hits SpecArmor first.")]
+        public DamageType BaseDamageType = DamageType.Physical;
+
         // ── Effects ───────────────────────────────────────────────────────────
 
         [Header("Effects")]
-        [Tooltip("All outcomes applied when this skill resolves. " +
-                 "Processed in list order; add multiple effects for combo moves.")]
+        [Tooltip("Full effect list. Processed in order. BaseDamage is ignored when this is non-empty.")]
         public List<SkillEffect> Effects = new();
     }
 

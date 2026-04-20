@@ -18,8 +18,8 @@ namespace PokemonAdventure.Core
     public class TickSystem : MonoBehaviour
     {
         [Header("Tick Settings")]
-        [Tooltip("World tick interval in seconds. Default: 5.")]
-        [SerializeField] private float _tickIntervalSeconds = 5f;
+        [Tooltip("World tick interval in seconds. Default: 3.")]
+        [SerializeField] private float _tickIntervalSeconds = 3f;
 
         [Header("Pause Conditions")]
         [SerializeField] private bool _pauseDuringDialogue = true;

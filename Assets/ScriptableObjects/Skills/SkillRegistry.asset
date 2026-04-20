@@ -12,4 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 9a58ddb4ecadd964eac6351fac16da87, type: 3}
   m_Name: SkillRegistry
   m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.SkillRegistry
-  _skills: []
+  _skills:
+  - {fileID: 11400000, guid: bc06dc4fc32e17048b44b1ad737b32af, type: 2}
+  - {fileID: 11400000, guid: e209afd0daea33f41a430a068214cd45, type: 2}
+  - {fileID: 11400000, guid: 574b29ad0cf4b444a98f52bfeb369659, type: 2}
+  - {fileID: 11400000, guid: e2e7caed5a5fa664bae799ae1e264fc7, type: 2}
+  - {fileID: 11400000, guid: fe1b6ae92ab83f344b48daaec5c5bd20, type: 2}

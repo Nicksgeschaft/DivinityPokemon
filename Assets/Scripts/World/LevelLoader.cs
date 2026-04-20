@@ -38,6 +38,10 @@ namespace PokemonAdventure.World
         [SerializeField] private PokemonDefinition _player3Definition;
         [SerializeField] private PokemonDefinition _player4Definition;
 
+        [Header("Combat")]
+        [Tooltip("Skill used when clicking an adjacent enemy with no skill selected.")]
+        [SerializeField] private SkillDefinition _basicAttackSkill;
+
         [Header("Tile Appearance")]
         [SerializeField] [Range(0f, 0.5f)]
         [Tooltip("Tile visual thickness (Y scale of the quad).")]
@@ -194,7 +198,7 @@ namespace PokemonAdventure.World
             go.AddComponent<PlayerUnitController>();
             go.AddComponent<ActionPointController>();
             go.AddComponent<CombatMovementController>();
-            go.AddComponent<BasicAttackController>();
+            go.AddComponent<BasicAttackController>().Initialize(_basicAttackSkill);
             go.AddComponent<OverworldMovementController>();
             go.AddComponent<UnitAnimationController>();
 
@@ -217,11 +221,23 @@ namespace PokemonAdventure.World
             col.height = 1f;
             col.radius = 0.3f;
 
-            // Wire into multiplayer session
+            // Wire into multiplayer session — find first free slot if the intended one is taken
             var session = ServiceLocator.TryGet(out MultiplayerSessionManager mgr) ? mgr : null;
-            session?.AssignUnitToSlot(slot, unit, def);
+            if (session != null)
+            {
+                int assignSlot = slot;
+                if (session.GetSlotByIndex(slot)?.ActiveUnit != null)
+                {
+                    // Slot already occupied — find next free slot
+                    for (int i = 0; i < PlayerSlot.MaxSlots; i++)
+                    {
+                        if (session.GetSlotByIndex(i)?.ActiveUnit == null) { assignSlot = i; break; }
+                    }
+                }
+                session.AssignUnitToSlot(assignSlot, unit, def);
+            }
 
-            // Point camera at first player
+            // First player spawned points the camera
             if (slot == 0)
             {
                 var cam = FindAnyObjectByType<OverworldCameraController>();

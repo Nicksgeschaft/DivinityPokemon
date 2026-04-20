@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using PokemonAdventure.Core;
@@ -32,6 +33,10 @@ namespace PokemonAdventure.Combat
 
     public class SkillExecutionHandler : MonoBehaviour
     {
+        [Header("VFX / Audio")]
+        [Tooltip("Global fallback height offset when a skill's VFXOffset is zero.")]
+        [SerializeField] private float _vfxHeightOffset = 0.5f;
+
         [Header("Debug")]
         [SerializeField] private bool _verboseLogging = true;
 
@@ -40,6 +45,7 @@ namespace PokemonAdventure.Combat
         private UnitRegistry     _unitRegistry;
         private SkillRegistry    _skillRegistry;
         private WorldGridManager _gridManager;
+        private GameStateManager _stateManager;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -48,6 +54,7 @@ namespace PokemonAdventure.Combat
             _unitRegistry  = ServiceLocator.Get<UnitRegistry>();
             _skillRegistry = ServiceLocator.Get<SkillRegistry>();
             _gridManager   = ServiceLocator.Get<WorldGridManager>();
+            _stateManager  = ServiceLocator.Get<GameStateManager>();
 
             if (_unitRegistry  == null) Debug.LogError("[SkillExecutionHandler] UnitRegistry not registered.");
             if (_skillRegistry == null) Debug.LogError("[SkillExecutionHandler] SkillRegistry not registered.");
@@ -80,16 +87,33 @@ namespace PokemonAdventure.Combat
                 return;
             }
 
-            // ── Re-validate (state may have changed since targeting began) ─────
-            if (!caster.IsAlive)                                 return;
-            if (!caster.RuntimeState.CanAfford(skill.APCost))   return;
+            // ── Re-validate ────────────────────────────────────────────────────
+            if (!caster.IsAlive) return;
             if (caster.RuntimeState.IsOnCooldown(skill.SkillId)) return;
 
-            // ── Spend resources (before resolving so UI reflects immediately) ───
-            caster.RuntimeState.TrySpendAP(skill.APCost);
+            bool inCombat = _stateManager?.IsInCombat ?? false;
+
+            // AP is only relevant in combat — overworld use is free
+            if (inCombat && !caster.RuntimeState.CanAfford(skill.APCost)) return;
+
+            // ── Spend resources ─────────────────────────────────────────────────
+            if (inCombat)
+            {
+                caster.RuntimeState.TrySpendAP(skill.APCost);
+                caster.RuntimeState.HasActedThisTurn = true;
+            }
             if (skill.Cooldown > 0)
                 caster.RuntimeState.SetCooldown(skill.SkillId, skill.Cooldown);
-            caster.RuntimeState.HasActedThisTurn = true;
+
+            // ── Face target before executing ───────────────────────────────────
+            if (_gridManager != null)
+            {
+                var targetWorld = _gridManager.GetWorldPosition(evt.TargetCell);
+                var dir = targetWorld - caster.transform.position;
+                dir.y = 0f;
+                if (dir.sqrMagnitude > 0.001f)
+                    caster.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+            }
 
             // ── Gather targets and resolve ─────────────────────────────────────
             var targets  = GatherTargets(skill, caster, evt.TargetCell, evt.TargetUnitId);
@@ -109,12 +133,81 @@ namespace PokemonAdventure.Combat
                 Debug.Log($"[SkillExecutionHandler] {caster.DisplayName} used {skill.SkillName} " +
                           $"— {resolvedCount} target(s). AP remaining: {caster.RuntimeState.CurrentAP}");
 
+            // Spawn VFX + play audio at target cell
+            if (_gridManager != null)
+            {
+                var worldPos = _gridManager.GetWorldPosition(evt.TargetCell);
+                SpawnVFXAndAudio(skill, worldPos);
+            }
+
             GameEventBus.Publish(new ActionExecutedEvent
             {
                 ActorUnitId = caster.UnitId,
                 ActionName  = skill.SkillName,
+                SkillId     = skill.SkillId,
                 APSpent     = skill.APCost
             });
+        }
+
+        // ── Direct Execution (no event / no registry lookup) ─────────────────
+
+        /// <summary>
+        /// Execute a skill directly against a single target unit.
+        /// Used by BasicAttackController so the basic attack goes through the
+        /// same AP / cooldown / VFX / event pipeline as every other skill.
+        /// </summary>
+        public void ExecuteDirect(SkillDefinition skill, BaseUnit caster, BaseUnit target)
+        {
+            if (skill == null || caster == null || target == null) return;
+            if (!caster.IsAlive || !target.IsAlive) return;
+
+            bool inCombat = _stateManager?.IsInCombat ?? false;
+
+            if (inCombat)
+            {
+                if (!caster.RuntimeState.CanAfford(skill.APCost)) return;
+                if (caster.RuntimeState.IsOnCooldown(skill.SkillId)) return;
+
+                // Use ActionPointController so APChangedEvent fires → UI refreshes.
+                var apCtrl = caster.GetComponent<ActionPointController>();
+                if (apCtrl != null)
+                {
+                    if (!apCtrl.SpendAP(skill.APCost)) return;
+                }
+                else
+                {
+                    if (!caster.RuntimeState.TrySpendAP(skill.APCost)) return;
+                }
+
+                caster.RuntimeState.HasActedThisTurn = true;
+            }
+
+            if (skill.Cooldown > 0)
+                caster.RuntimeState.SetCooldown(skill.SkillId, skill.Cooldown);
+
+            // Face caster toward target
+            var dir = target.transform.position - caster.transform.position;
+            dir.y = 0f;
+            if (dir.sqrMagnitude > 0.001f)
+                caster.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+
+            // Resolve damage / effects
+            SkillResolver.Resolve(skill, caster, target);
+
+            // VFX + audio at target position
+            SpawnVFXAndAudio(skill, target.transform.position);
+
+            GameEventBus.Publish(new ActionExecutedEvent
+            {
+                ActorUnitId = caster.UnitId,
+                ActionName  = skill.SkillName,
+                SkillId     = skill.SkillId,
+                APSpent     = skill.APCost
+            });
+
+            if (_verboseLogging)
+                Debug.Log($"[SkillExecutionHandler] ExecuteDirect: {caster.DisplayName} → " +
+                          $"{skill.SkillName} → {target.DisplayName}. AP left: {caster.RuntimeState.CurrentAP}");
         }
 
         // ── Target Resolution ─────────────────────────────────────────────────
@@ -231,6 +324,54 @@ namespace PokemonAdventure.Combat
                     targets.Add(kv.Value);
             }
         }
+
+        // ── VFX + Audio ───────────────────────────────────────────────────────
+
+        /// <summary>
+        /// Spawns the skill's VFX prefab (if any) at <paramref name="basePos"/> plus
+        /// the skill's VFXOffset, and plays the sound effect for up to SoundEffectDuration
+        /// seconds (0 = full clip).
+        /// </summary>
+        private void SpawnVFXAndAudio(SkillDefinition skill, Vector3 basePos)
+        {
+            // Use skill's own VFXOffset; fall back to global height offset when offset is zero
+            Vector3 offset  = skill.VFXOffset != Vector3.zero
+                ? skill.VFXOffset
+                : new Vector3(0f, _vfxHeightOffset, 0f);
+            Vector3 spawnPos = basePos + offset;
+
+            if (skill.VFXPrefab != null)
+                UnityEngine.Object.Instantiate(skill.VFXPrefab, spawnPos, Quaternion.identity);
+
+            if (skill.SoundEffect != null)
+            {
+                if (skill.SoundEffectDuration <= 0f || skill.SoundEffectDuration >= skill.SoundEffect.length)
+                {
+                    AudioSource.PlayClipAtPoint(skill.SoundEffect, spawnPos);
+                }
+                else
+                {
+                    StartCoroutine(PlayClipForDuration(skill.SoundEffect, spawnPos, skill.SoundEffectDuration));
+                }
+            }
+        }
+
+        private static IEnumerator PlayClipForDuration(AudioClip clip, Vector3 pos, float duration)
+        {
+            var go  = new GameObject("SkillAudio_Temp");
+            go.transform.position = pos;
+            var src = go.AddComponent<AudioSource>();
+            src.clip        = clip;
+            src.spatialBlend = 1f;
+            src.Play();
+
+            yield return new WaitForSeconds(duration);
+
+            src.Stop();
+            Destroy(go);
+        }
+
+        // ── Target Resolution ─────────────────────────────────────────────────
 
         /// <summary>
         /// Resolve a single-cell target. Prefers the explicit TargetUnitId;

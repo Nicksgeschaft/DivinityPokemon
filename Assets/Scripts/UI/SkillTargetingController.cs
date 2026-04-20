@@ -76,6 +76,9 @@ namespace PokemonAdventure.UI
             _overlay     = FindAnyObjectByType<GridOverlay>();
             _camera      = Camera.main;
 
+            if (_gridManager == null) Debug.LogWarning("[SkillTargetingController] WorldGridManager not found — targeting overlay will not work.");
+            if (_overlay    == null) Debug.LogWarning("[SkillTargetingController] GridOverlay not found — targeting overlay will not work.");
+
             GameEventBus.Subscribe<SkillTargetingStartedEvent>(OnExternalTargetingStarted);
             GameEventBus.Subscribe<SkillTargetingCancelledEvent>(OnExternalCancelled);
         }
@@ -222,17 +225,13 @@ namespace PokemonAdventure.UI
                     break;
 
                 case TargetingType.SingleEnemy:
-                    AddUnitsInRange(result, casterPos, range, u =>
-                        u.Faction != caster.Faction && u.IsAlive);
+                    AddWalkableCellsInRange(result, casterPos, range);
+                    result.Remove(casterPos); // can never target your own cell with an enemy skill
                     break;
 
                 case TargetingType.SingleAlly:
-                    AddUnitsInRange(result, casterPos, range, u =>
-                        u.Faction == caster.Faction && u.IsAlive);
-                    break;
-
                 case TargetingType.SingleAny:
-                    AddUnitsInRange(result, casterPos, range, u => u.IsAlive);
+                    AddWalkableCellsInRange(result, casterPos, range);
                     break;
 
                 case TargetingType.GroundTarget:
@@ -320,15 +319,27 @@ namespace PokemonAdventure.UI
 
         private void ResetState()
         {
+            // Clear targeting overlay before wiping references
+            if (_overlay != null && _caster != null && _activeSkill != null)
+            {
+                var range = GridUtility.GetCellsInManhattanRange(
+                    _caster.RuntimeState.GridPosition, _activeSkill.Range);
+                foreach (var pos in range)
+                    _overlay.HideCell(pos);
+
+                if (_hoveredCell.HasValue)
+                    _overlay.HideCell(_hoveredCell.Value);
+
+                foreach (var pos in _previewAoECells)
+                    _overlay.HideCell(pos);
+            }
+
             State        = TargetingState.Idle;
             _activeSkill = null;
             _caster      = null;
             _hoveredCell = null;
             _validTargetCells.Clear();
             _previewAoECells.Clear();
-
-            // Restore overlay to default zone display
-            // (CombatUIController / GridOverlay will refresh on next TurnStartedEvent)
         }
 
         // ── Raycasting ────────────────────────────────────────────────────────
@@ -360,13 +371,17 @@ namespace PokemonAdventure.UI
 
         private void OnExternalTargetingStarted(SkillTargetingStartedEvent evt)
         {
+            // Re-resolve late dependencies (LevelLoader spawns grid after Start)
+            if (_gridManager == null) _gridManager = ServiceLocator.Get<WorldGridManager>();
+            if (_overlay    == null) _overlay     = FindAnyObjectByType<GridOverlay>();
+            if (_camera     == null) _camera      = Camera.main;
+
             var skillRegistry = ServiceLocator.Get<SkillRegistry>();
             var unitRegistry  = ServiceLocator.Get<UnitRegistry>();
 
             if (skillRegistry == null || unitRegistry == null)
             {
-                Debug.LogWarning("[SkillTargetingController] SkillRegistry or UnitRegistry " +
-                                 "not registered — cannot start targeting.");
+                Debug.LogWarning("[SkillTargetingController] SkillRegistry or UnitRegistry not registered.");
                 return;
             }
 
@@ -379,6 +394,12 @@ namespace PokemonAdventure.UI
             if (!unitRegistry.TryGet(evt.CasterUnitId, out var caster))
             {
                 Debug.LogWarning($"[SkillTargetingController] Caster '{evt.CasterUnitId}' not in UnitRegistry.");
+                return;
+            }
+
+            if (_gridManager == null)
+            {
+                Debug.LogWarning("[SkillTargetingController] WorldGridManager still null — targeting aborted.");
                 return;
             }
 

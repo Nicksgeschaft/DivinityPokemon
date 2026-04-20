@@ -55,27 +55,34 @@ namespace PokemonAdventure.Units
         public float BonusInitiative;
 
         // ── Derived Stats ─────────────────────────────────────────────────────
+        //
+        // Formula intent: base stats are raw Pokémon values (e.g. Charmander HP 39).
+        // Dividing keeps combat numbers small and readable:
+        //   HP      ≈ 8–12 at low level   (BaseHP / 4)
+        //   Attack  ≈ 2–4  at low level   (BaseAttack / 16, min 1)
+        //   Armor   ≈ 2–4  at low level   (BaseDefense / 16, min 0)
+        //
+        // Level adds small flat bonuses so growth is visible but not explosive.
+        // BonusXxx covers equipment, permanent upgrades, and stat investment.
 
-        // Scaling constants — tuned via playtesting.
-        private const float HpPerLevel          = 8f;
-        private const float ArmorScaleFactor    = 1.5f;
-        private const float AttackScaleFactor   = 0.5f;
-        private const float InitiativePerLevel  = 0.3f;
+        private const float HpPerLevel       = 1f;
+        private const float StatPerLevel     = 0.1f;
+        private const float InitiativePerLevel = 0.3f;
 
         public float MaxHP =>
-            BaseHP + (Level - 1) * HpPerLevel + BonusHP;
+            Mathf.Floor(BaseHP / 4f) + (Level - 1) * HpPerLevel + BonusHP;
 
         public float MaxPhysicalArmor =>
-            BaseDefense * ArmorScaleFactor * (1f + (Level - 1) * 0.08f) + BonusPhysicalArmor;
+            Mathf.Max(0f, Mathf.Floor(BaseDefense / 16f)) + (Level - 1) * StatPerLevel + BonusPhysicalArmor;
 
         public float MaxSpecialArmor =>
-            BaseSpecialDefense * ArmorScaleFactor * (1f + (Level - 1) * 0.08f) + BonusSpecialArmor;
+            Mathf.Max(0f, Mathf.Floor(BaseSpecialDefense / 16f)) + (Level - 1) * StatPerLevel + BonusSpecialArmor;
 
         public float EffectiveAttack =>
-            BaseAttack + (Level - 1) * AttackScaleFactor + BonusAttack;
+            Mathf.Max(1f, Mathf.Floor(BaseAttack / 16f)) + (Level - 1) * StatPerLevel + BonusAttack;
 
         public float EffectiveSpecialAttack =>
-            BaseSpecialAttack + (Level - 1) * AttackScaleFactor + BonusSpecialAttack;
+            Mathf.Max(1f, Mathf.Floor(BaseSpecialAttack / 16f)) + (Level - 1) * StatPerLevel + BonusSpecialAttack;
 
         public float EffectiveInitiative =>
             BaseInitiative + (Level - 1) * InitiativePerLevel + BonusInitiative;

@@ -1,37 +1,43 @@
+using System.Collections;
 using UnityEngine;
 using PokemonAdventure.Core;
 using PokemonAdventure.Data;
 using PokemonAdventure.Grid;
+using PokemonAdventure.ScriptableObjects;
 using PokemonAdventure.Units;
 
 namespace PokemonAdventure.Combat
 {
     // ==========================================================================
     // Basic Attack Controller
-    // Handles clicking on an adjacent enemy during the player's combat turn.
+    // Executes the unit's basic attack skill when the player clicks an adjacent
+    // enemy without a skill selected.
     //
-    // ATTACK RULES:
-    //   - Target must be a hostile unit in the grid cell under the cursor.
-    //   - Target must be exactly 1 Manhattan step away (adjacent, no diagonals).
-    //   - Costs exactly 1 AP. If AP < 1, the click is silently ignored.
+    // The actual damage / AP / VFX pipeline is handled by SkillExecutionHandler
+    // so the basic attack behaves identically to any other skill.
     //
-    // VISUAL FEEDBACK:
-    //   - Hovered adjacent enemy with enough AP → orange highlight
-    //   - Hovered adjacent enemy without AP     → red highlight
-    //   - Hovered non-adjacent or friendly      → no highlight from this controller
-    //
-    // Attach to the same GameObject as PlayerUnit + ActionPointController.
+    // Setup:
+    //   1. Assign a SkillDefinition to _basicAttackSkill in the Inspector.
+    //   2. Attach to the same GameObject as PlayerUnit + ActionPointController.
     // ==========================================================================
 
     [RequireComponent(typeof(BaseUnit))]
     [RequireComponent(typeof(ActionPointController))]
     public class BasicAttackController : MonoBehaviour
     {
-        public const int AttackAPCost = 1;
+        [Header("Basic Attack Skill")]
+        [Tooltip("SkillDefinition used when clicking an adjacent enemy with no skill selected.")]
+        [SerializeField] private SkillDefinition _basicAttackSkill;
+
+        /// <summary>Call after AddComponent when spawning via code.</summary>
+        public void Initialize(SkillDefinition basicAttackSkill)
+        {
+            _basicAttackSkill = basicAttackSkill;
+        }
 
         [Header("Overlay Colours")]
-        [SerializeField] private Color _attackableColor   = new Color(1.0f, 0.55f, 0.0f, 0.60f); // orange
-        [SerializeField] private Color _noAPAttackColor   = new Color(0.9f, 0.15f, 0.1f, 0.45f); // red
+        [SerializeField] private Color _attackableColor = new Color(1.0f, 0.55f, 0.0f, 0.60f);
+        [SerializeField] private Color _noAPAttackColor = new Color(0.9f, 0.15f, 0.1f, 0.45f);
 
         [Header("Raycast")]
         [SerializeField] private LayerMask _groundLayer;
@@ -43,6 +49,7 @@ namespace PokemonAdventure.Combat
         private GameStateManager      _stateManager;
         private IPlayerInput          _input;
         private GridOverlay           _overlay;
+        private SkillExecutionHandler _executionHandler;
         private Camera                _camera;
         private BaseUnit              _unit;
         private ActionPointController _ap;
@@ -50,6 +57,8 @@ namespace PokemonAdventure.Combat
         // ── State ─────────────────────────────────────────────────────────────
 
         private bool        _isMyTurn;
+        private bool        _skillTargetingActive;
+        private bool        _isActiveControlledUnit;
         private Vector2Int? _highlightedCell;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
@@ -62,16 +71,26 @@ namespace PokemonAdventure.Combat
 
         private void Start()
         {
-            _gridManager  = ServiceLocator.Get<WorldGridManager>();
-            _stateManager = ServiceLocator.Get<GameStateManager>();
-            _input        = ServiceLocator.Get<IPlayerInput>();
-            _overlay      = FindAnyObjectByType<GridOverlay>();
-            _camera       = Camera.main;
+            _gridManager      = ServiceLocator.Get<WorldGridManager>();
+            _stateManager     = ServiceLocator.Get<GameStateManager>();
+            _input            = ServiceLocator.Get<IPlayerInput>();
+            _overlay          = FindAnyObjectByType<GridOverlay>();
+            _executionHandler = FindAnyObjectByType<SkillExecutionHandler>();
+            _camera           = Camera.main;
+
+            if (_basicAttackSkill == null)
+                Debug.LogWarning("[BasicAttackController] No BasicAttackSkill assigned — basic attack will not work.");
+            if (_executionHandler == null)
+                Debug.LogWarning("[BasicAttackController] SkillExecutionHandler not found in scene.");
 
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Subscribe<TurnEndedEvent>(OnTurnEnded);
             GameEventBus.Subscribe<APChangedEvent>(OnAPChanged);
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
+            GameEventBus.Subscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Subscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Subscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            GameEventBus.Subscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void OnDestroy()
@@ -80,11 +99,15 @@ namespace PokemonAdventure.Combat
             GameEventBus.Unsubscribe<TurnEndedEvent>(OnTurnEnded);
             GameEventBus.Unsubscribe<APChangedEvent>(OnAPChanged);
             GameEventBus.Unsubscribe<GameStateChangedEvent>(OnStateChanged);
+            GameEventBus.Unsubscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Unsubscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Unsubscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            GameEventBus.Unsubscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void Update()
         {
-            if (!_isMyTurn) return;
+            if (!_isMyTurn || !_isActiveControlledUnit || _skillTargetingActive) return;
             if (!(_stateManager?.IsInCombat ?? false)) return;
             if (_camera == null || _gridManager == null) return;
 
@@ -98,11 +121,10 @@ namespace PokemonAdventure.Combat
 
         private void UpdateTargetHighlight()
         {
-            var hovered  = GetCellUnderCursor();
-            var target   = GetHostileAt(hovered);
-            bool isAdj   = target != null && IsAdjacent(target);
+            var hovered = GetCellUnderCursor();
+            var target  = GetHostileAt(hovered);
+            bool isAdj  = target != null && IsAdjacent(target);
 
-            // Clear previous highlight if cursor moved
             if (_highlightedCell.HasValue && _highlightedCell != hovered)
             {
                 _overlay?.HideCell(_highlightedCell.Value);
@@ -111,8 +133,8 @@ namespace PokemonAdventure.Combat
 
             if (target == null || !isAdj) return;
 
-            // Choose colour by AP affordability
-            var color = _ap.HasAP(AttackAPCost) ? _attackableColor : _noAPAttackColor;
+            int apCost = _basicAttackSkill?.APCost ?? 1;
+            var color  = _ap.HasAP(apCost) ? _attackableColor : _noAPAttackColor;
             _overlay?.HighlightCell(hovered.Value, color);
             _highlightedCell = hovered;
         }
@@ -130,59 +152,19 @@ namespace PokemonAdventure.Combat
 
         private void HandleClick()
         {
+            if (_basicAttackSkill == null || _executionHandler == null) return;
+
             var hovered = GetCellUnderCursor();
             var target  = GetHostileAt(hovered);
 
             if (target == null || !IsAdjacent(target)) return;
+            if (!_ap.HasAP(_basicAttackSkill.APCost)) return;
 
-            // Silently block if not enough AP (red highlight already communicates this)
-            if (!_ap.HasAP(AttackAPCost)) return;
-
-            ExecuteAttack(target);
-        }
-
-        // ── Attack Execution ──────────────────────────────────────────────────
-
-        private void ExecuteAttack(BaseUnit target)
-        {
-            if (!_ap.SpendAP(AttackAPCost)) return;
-
-            float damage     = _unit.Stats.EffectiveAttack;
-            float hpBefore   = target.RuntimeState.CurrentHP;
-            float physBefore = target.RuntimeState.CurrentPhysicalArmor;
-            float specBefore = target.RuntimeState.CurrentSpecialArmor;
-
-            target.TakeDamage(damage, DamageType.Physical, _unit);
-
-            float armorAbsorbed = (physBefore - target.RuntimeState.CurrentPhysicalArmor)
-                                + (specBefore - target.RuntimeState.CurrentSpecialArmor);
-            float hpDamage      = hpBefore - target.RuntimeState.CurrentHP;
-
-            GameEventBus.Publish(new DamageDealtEvent
-            {
-                AttackerUnitId = _unit.UnitId,
-                DefenderUnitId = target.UnitId,
-                SkillId        = "BasicAttack",
-                FinalDamage    = damage,
-                ArmorAbsorbed  = armorAbsorbed,
-                HPDamage       = hpDamage,
-                Effectiveness  = EffectivenessCategory.Normal
-            });
-
-            GameEventBus.Publish(new ActionExecutedEvent
-            {
-                ActorUnitId = _unit.UnitId,
-                ActionName  = "BasicAttack",
-                APSpent     = AttackAPCost
-            });
+            _executionHandler.ExecuteDirect(_basicAttackSkill, _unit, target);
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────
 
-        /// <summary>
-        /// Returns the hostile BaseUnit occupying <paramref name="gridPos"/>,
-        /// or null if the cell is empty, out of bounds, or not hostile.
-        /// </summary>
         private BaseUnit GetHostileAt(Vector2Int? gridPos)
         {
             if (gridPos == null || _gridManager == null) return null;
@@ -192,7 +174,6 @@ namespace PokemonAdventure.Combat
                 ? occupant : null;
         }
 
-        /// <summary>Manhattan distance of exactly 1 (cardinal adjacency only).</summary>
         private bool IsAdjacent(BaseUnit target)
         {
             if (_unit == null || target == null) return false;
@@ -207,6 +188,12 @@ namespace PokemonAdventure.Combat
             if (!_isMyTurn) ClearHighlight();
         }
 
+        private void OnActiveUnitChanged(ActiveUnitChangedEvent evt)
+        {
+            _isActiveControlledUnit = _unit != null && evt.UnitId == _unit.UnitId;
+            if (!_isActiveControlledUnit) ClearHighlight();
+        }
+
         private void OnTurnEnded(TurnEndedEvent evt)
         {
             if (_unit != null && evt.ActiveUnitId == _unit.UnitId)
@@ -218,7 +205,6 @@ namespace PokemonAdventure.Combat
 
         private void OnAPChanged(APChangedEvent evt)
         {
-            // Refresh highlight colour when AP changes (e.g. after a move)
             if (_unit != null && evt.UnitId == _unit.UnitId && _highlightedCell.HasValue)
             {
                 _overlay?.HideCell(_highlightedCell.Value);
@@ -231,8 +217,33 @@ namespace PokemonAdventure.Combat
             if (evt.NewState != GameState.Combat)
             {
                 _isMyTurn = false;
+                _skillTargetingActive = false;
                 ClearHighlight();
             }
+        }
+
+        private void OnSkillTargetingStarted(SkillTargetingStartedEvent evt)
+        {
+            _skillTargetingActive = true;
+            ClearHighlight();
+        }
+
+        private void OnSkillTargetingEnded(SkillTargetingCancelledEvent evt)
+        {
+            _skillTargetingActive = false;
+        }
+
+        private void OnSkillTargetingConfirmed(SkillTargetingConfirmedEvent evt)
+        {
+            // Delay by one frame so ConfirmPressed from the confirming click
+            // is no longer true when Update() next runs.
+            StartCoroutine(ClearTargetingNextFrame());
+        }
+
+        private IEnumerator ClearTargetingNextFrame()
+        {
+            yield return null;
+            _skillTargetingActive = false;
         }
 
         // ── Raycast ───────────────────────────────────────────────────────────

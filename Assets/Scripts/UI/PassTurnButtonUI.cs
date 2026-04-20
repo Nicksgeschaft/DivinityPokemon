@@ -25,16 +25,18 @@ namespace PokemonAdventure.UI
             SetInteractable(false);
         }
 
-        private void OnEnable()
+        private void Start()
         {
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Subscribe<TurnEndedEvent>(OnTurnEnded);
+            GameEventBus.Subscribe<CombatStartedEvent>(OnCombatStarted);
         }
 
-        private void OnDisable()
+        private void OnDestroy()
         {
             GameEventBus.Unsubscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Unsubscribe<TurnEndedEvent>(OnTurnEnded);
+            GameEventBus.Unsubscribe<CombatStartedEvent>(OnCombatStarted);
         }
 
         // ── Public API ────────────────────────────────────────────────────────
@@ -62,6 +64,13 @@ namespace PokemonAdventure.UI
 
         private void OnTurnEnded(TurnEndedEvent evt)
         {
+            _activePlayerUnitId = null;
+            SetInteractable(false);
+        }
+
+        private void OnCombatStarted(CombatStartedEvent evt)
+        {
+            // Reset state at combat start — turn events will enable the button when needed
             _activePlayerUnitId = null;
             SetInteractable(false);
         }

@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using PokemonAdventure.Core;
 using PokemonAdventure.Data;
+using PokemonAdventure.ScriptableObjects;
 using PokemonAdventure.Units;
 
 namespace PokemonAdventure.UI
@@ -30,9 +31,10 @@ namespace PokemonAdventure.UI
 
         // ── Private State ─────────────────────────────────────────────────────
 
-        private IPlayerInput _input;
-        private int          _selectedIndex = -1;
-        private BaseUnit     _trackedUnit;
+        private IPlayerInput     _input;
+        private GameStateManager _stateManager;
+        private int              _selectedIndex = -1;
+        private BaseUnit         _trackedUnit;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -56,15 +58,20 @@ namespace PokemonAdventure.UI
 
         private void Start()
         {
-            _input = ServiceLocator.Get<IPlayerInput>();
+            _input        = ServiceLocator.Get<IPlayerInput>();
+            _stateManager = ServiceLocator.Get<GameStateManager>();
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Subscribe<ActionExecutedEvent>(OnActionExecuted);
+            GameEventBus.Subscribe<SkillTargetingConfirmedEvent>(OnTargetingConfirmed);
+            GameEventBus.Subscribe<WorldTickEvent>(OnWorldTick);
         }
 
         private void OnDestroy()
         {
             GameEventBus.Unsubscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Unsubscribe<ActionExecutedEvent>(OnActionExecuted);
+            GameEventBus.Unsubscribe<SkillTargetingConfirmedEvent>(OnTargetingConfirmed);
+            GameEventBus.Unsubscribe<WorldTickEvent>(OnWorldTick);
         }
 
         private void Update()
@@ -140,8 +147,28 @@ namespace PokemonAdventure.UI
         {
             if (index < 0 || index >= _slots.Length) return;
 
+            var slot = _slots[index];
+            if (slot == null) return;
+
+            // Block selection of empty or on-cooldown slots
+            if (slot.AssignedSkill == null) return;
+            if (_trackedUnit != null && _trackedUnit.RuntimeState.IsOnCooldown(slot.AssignedSkill.SkillId)) return;
+
+            // Second press on the same slot → deselect and cancel targeting
+            if (_selectedIndex == index)
+            {
+                _slots[index]?.SetSelected(false);
+                PublishTargetingCancelled(_slots[index]?.AssignedSkill);
+                _selectedIndex = -1;
+                return;
+            }
+
+            // Cancel previous targeting before switching
             if (_selectedIndex >= 0 && _selectedIndex < _slots.Length)
+            {
                 _slots[_selectedIndex]?.SetSelected(false);
+                PublishTargetingCancelled(_slots[_selectedIndex]?.AssignedSkill);
+            }
 
             _selectedIndex = index;
             _slots[index]?.SetSelected(true);
@@ -149,11 +176,41 @@ namespace PokemonAdventure.UI
             var skill = _slots[index]?.AssignedSkill;
             Debug.Log($"[SkillBarUI] Slot {index + 1} selected — " +
                       $"{(skill != null ? skill.SkillName : "empty")}");
+
+            // Start targeting overlay (works in combat and overworld)
+            if (skill != null && _trackedUnit != null)
+            {
+                GameEventBus.Publish(new SkillTargetingStartedEvent
+                {
+                    CasterUnitId = _trackedUnit.UnitId,
+                    SkillId      = skill.SkillId
+                });
+            }
+        }
+
+        private void PublishTargetingCancelled(SkillDefinition skill)
+        {
+            if (skill == null || _trackedUnit == null) return;
+            GameEventBus.Publish(new SkillTargetingCancelledEvent
+            {
+                CasterUnitId = _trackedUnit.UnitId,
+                SkillId      = skill.SkillId
+            });
         }
 
         private void HandleSlotClicked(SkillSlotUI slot) => SelectSlot(slot.SlotIndex);
 
         // ── Event Handlers ────────────────────────────────────────────────────
+
+        private void OnWorldTick(WorldTickEvent evt) => RefreshCooldowns();
+
+        private void OnTargetingConfirmed(SkillTargetingConfirmedEvent evt)
+        {
+            // Auto-deselect skill slot after casting so the player can move again
+            if (_selectedIndex < 0 || _selectedIndex >= _slots.Length) return;
+            _slots[_selectedIndex]?.SetSelected(false);
+            _selectedIndex = -1;
+        }
 
         private void OnTurnStarted(TurnStartedEvent evt)
         {

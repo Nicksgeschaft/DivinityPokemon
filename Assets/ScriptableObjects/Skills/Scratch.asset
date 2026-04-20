@@ -30,6 +30,8 @@ MonoBehaviour:
   VFXPrefab: {fileID: 0}
   SoundEffect: {fileID: 0}
   CastAnimation: 5
-  SkillIcon: {fileID: 21300000, guid: 1192d9a0975826b4ca8909d441c2ac74, type: 3}
+  SkillIcon: {fileID: 21300000, guid: 9170ffafe8c7af248aed7918a5444e3e, type: 3}
   SkillBarBackground: {fileID: 21300000, guid: b4d588fe7575919468cda4d717882d56, type: 3}
+  BaseDamage: 4
+  BaseDamageType: 0
   Effects: []

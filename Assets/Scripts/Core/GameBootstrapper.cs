@@ -137,12 +137,13 @@ namespace PokemonAdventure.Core
             }
 
             // SkillExecutionHandler — listens for SkillTargetingConfirmedEvent and
-            // routes through SkillResolver. Requires CombatStateController to be present.
-            if (GetComponentInChildren<Combat.CombatStateController>() != null)
-            {
-                GetOrCreateChild<Combat.SkillExecutionHandler>("SkillExecutionHandler");
-                Log("SkillExecutionHandler created.");
-            }
+            // routes through SkillResolver. Always required (works in overworld too).
+            GetOrCreateChild<Combat.SkillExecutionHandler>("SkillExecutionHandler");
+            Log("SkillExecutionHandler created.");
+
+            // PartySwitchController — Tab key cycling between party members.
+            GetOrCreateChild<PartySwitchController>("PartySwitchController");
+            Log("PartySwitchController created.");
         }
 
         // ── Helpers ───────────────────────────────────────────────────────────

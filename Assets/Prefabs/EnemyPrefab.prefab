@@ -45,4 +45,12 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.Units.EnemyPrefabController
   _archetype: {fileID: 0}
-  _sightRadiusOverride: 0
+  _hpColorFull: {r: 0.2, g: 0.85, b: 0.25, a: 1}
+  _hpColorMid: {r: 0.9, g: 0.8, b: 0.1, a: 1}
+  _hpColorLow: {r: 0.9, g: 0.2, b: 0.2, a: 1}
+  _hpMidThreshold: 0.5
+  _hpLowThreshold: 0.1
+  _physArmorColor: {r: 0.8980393, g: 0.6862745, b: 0.2901961, a: 1}
+  _specArmorColor: {r: 0.30588236, g: 0.61960787, b: 0.89019614, a: 1}
+  _barFont: {fileID: 11400000, guid: 56201376ea4b38046b8abc067e8565af, type: 2}
+  _barFontSize: 12

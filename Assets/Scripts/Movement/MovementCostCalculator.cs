@@ -75,20 +75,42 @@ namespace PokemonAdventure.Movement
         }
 
         /// <summary>
-        /// Returns how many cells a unit can move with its current AP budget.
-        /// Used to visualize movement range without running full pathfinding.
+        /// Returns how many cells a unit can move this turn.
+        /// Capped by the Initiative tier AND the unit's remaining AP.
+        /// isWild = true uses the tighter wild Pokémon table.
         /// </summary>
-        public static int GetMovementRangeInCells(RuntimeUnitState unitState)
+        public static int GetMovementRangeInCells(RuntimeUnitState unitState, UnitStats stats, bool isWild = false)
         {
             if (unitState.HasStatus(StatusEffectType.Rooted)) return 0;
 
-            // Base: 1 cell per AP
-            int range = unitState.CurrentAP * CellsPerAPDefault;
+            int tier  = GetMovementTier(stats.EffectiveInitiative, isWild);
+            int ap    = unitState.CurrentAP * CellsPerAPDefault;
+            return Mathf.Min(tier, ap);
+        }
 
-            // TODO: Apply initiative-based movement tiers
-            // TODO: A unit with BaseInitiative ≥ 15 could get range = AP * 2
-
-            return range;
+        /// <summary>
+        /// Movement tier from Initiative.
+        /// Player table  : 0–29→1, 30–59→2, 60–89→3, 90–119→4, 120+→5
+        /// Wild Pokémon  : 0–39→1, 40–69→2, 70–99→3, 100–129→4, 130+→5
+        /// </summary>
+        public static int GetMovementTier(float initiative, bool isWild)
+        {
+            if (isWild)
+            {
+                if (initiative <  40) return 1;
+                if (initiative <  70) return 2;
+                if (initiative < 100) return 3;
+                if (initiative < 130) return 4;
+                return 5;
+            }
+            else
+            {
+                if (initiative <  30) return 1;
+                if (initiative <  60) return 2;
+                if (initiative <  90) return 3;
+                if (initiative < 120) return 4;
+                return 5;
+            }
         }
 
         // ── Surface Cost Lookup ───────────────────────────────────────────────

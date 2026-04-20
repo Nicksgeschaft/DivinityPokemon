@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using PokemonAdventure.AI;
 using PokemonAdventure.Animations;
 using PokemonAdventure.ScriptableObjects;
@@ -33,6 +34,21 @@ namespace PokemonAdventure.Units
         [Header("Archetype")]
         [Tooltip("Drag the EnemyArchetypeDefinition here. Everything else is automatic.")]
         [SerializeField] private EnemyArchetypeDefinition _archetype;
+
+        [Header("Health Bar – HP Colours")]
+        [SerializeField] private Color _hpColorFull = new Color(0.20f, 0.85f, 0.25f, 1f);
+        [SerializeField] private Color _hpColorMid  = new Color(0.90f, 0.80f, 0.10f, 1f);
+        [SerializeField] private Color _hpColorLow  = new Color(0.90f, 0.20f, 0.20f, 1f);
+        [SerializeField] [Range(0f, 1f)] private float _hpMidThreshold = 0.50f;
+        [SerializeField] [Range(0f, 1f)] private float _hpLowThreshold = 0.25f;
+
+        [Header("Health Bar – Armor Colours")]
+        [SerializeField] private Color _physArmorColor = new Color(0.25f, 0.55f, 1.00f, 1f);
+        [SerializeField] private Color _specArmorColor = new Color(0.75f, 0.30f, 0.90f, 1f);
+
+        [Header("Health Bar – Text")]
+        [SerializeField] private TMP_FontAsset _barFont;
+        [SerializeField] private float         _barFontSize = 10f;
 
         private bool _built;
 
@@ -110,49 +126,112 @@ namespace PokemonAdventure.Units
         }
 
         // ── Health Bar Canvas ─────────────────────────────────────────────────
+        //
+        // Layout (canvas 120 × 32 px, scale 0.012):
+        //   Top row  (y 18–30): [PhysArmor 56px] [4px gap] [SpecArmor 56px]
+        //   Bot row  (y  2–14): [HP bar 116px — same total width as armor row]
+        //
+        // Each bar: dark background strip + horizontal fill slider + centred label.
+        // Canvas renders in front of all sprites via overrideSorting + high order.
 
         private void BuildHealthBarCanvas(string unitName)
         {
             var canvasGo = new GameObject("HealthBarCanvas");
             canvasGo.transform.SetParent(transform, false);
-            canvasGo.transform.localPosition = new Vector3(0f, 1.4f, 0f);
-            canvasGo.transform.localScale    = Vector3.one * 0.01f;
+            canvasGo.transform.localPosition = Vector3.zero;
+            canvasGo.transform.localScale    = Vector3.one * 0.012f;
 
             var canvas = canvasGo.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.WorldSpace;
+            canvas.renderMode      = RenderMode.WorldSpace;
+            canvas.overrideSorting = true;
+            canvas.sortingOrder    = 100;
 
             var canvasRt = canvasGo.GetComponent<RectTransform>();
-            canvasRt.sizeDelta = new Vector2(100f, 14f);
+            canvasRt.sizeDelta = new Vector2(120f, 32f);
 
-            // Background
-            var bgGo = new GameObject("Background");
-            bgGo.transform.SetParent(canvasGo.transform, false);
+            // Top row: armor bars side by side
+            var (physFill, physText) = MakeBarWithLabel(canvasGo, "PhysArmor",
+                new Vector2(2f, 18f), new Vector2(56f, 12f),
+                _physArmorColor, _barFont, _barFontSize);
+
+            var (specFill, specText) = MakeBarWithLabel(canvasGo, "SpecArmor",
+                new Vector2(62f, 18f), new Vector2(56f, 12f),
+                _specArmorColor, _barFont, _barFontSize);
+
+            // Bottom row: HP bar, same total width as both armor bars
+            var (hpFill, hpText) = MakeBarWithLabel(canvasGo, "HP",
+                new Vector2(2f, 2f), new Vector2(116f, 12f),
+                _hpColorFull, _barFont, _barFontSize);
+
+            var healthBar = gameObject.AddComponent<EnemyHealthBar>();
+            healthBar.Initialize(
+                canvas,
+                hpFill, hpText, _hpColorFull, _hpColorMid, _hpColorLow,
+                _hpMidThreshold, _hpLowThreshold,
+                physFill, physText,
+                specFill, specText);
+
+            canvasGo.SetActive(false);
+        }
+
+        // Each bar = container → dark bg strip + fill slider + centred label.
+        // The dark bg makes the "empty" portion always visible, so the bar
+        // behaves like a proper slider (1/7 HP shows a small strip, not a full bar).
+        private static (Image fill, TextMeshProUGUI label) MakeBarWithLabel(
+            GameObject canvas, string barName,
+            Vector2 pos, Vector2 size,
+            Color fillColor, TMP_FontAsset font, float fontSize)
+        {
+            // Container (no Image — just a positioned rect)
+            var barGo = new GameObject(barName);
+            barGo.transform.SetParent(canvas.transform, false);
+            var barRt = barGo.AddComponent<RectTransform>();
+            barRt.anchorMin        = Vector2.zero;
+            barRt.anchorMax        = Vector2.zero;
+            barRt.pivot            = Vector2.zero;
+            barRt.anchoredPosition = pos;
+            barRt.sizeDelta        = size;
+
+            // Dark background strip (makes empty portion visible)
+            var bgGo = new GameObject("Bg");
+            bgGo.transform.SetParent(barGo.transform, false);
             var bgRt = bgGo.AddComponent<RectTransform>();
             bgRt.anchorMin = Vector2.zero;
             bgRt.anchorMax = Vector2.one;
             bgRt.offsetMin = Vector2.zero;
             bgRt.offsetMax = Vector2.zero;
-            var bgImg = bgGo.AddComponent<Image>();
-            bgImg.color = new Color(0.08f, 0.08f, 0.08f, 0.85f);
+            bgGo.AddComponent<Image>().color = new Color(0.10f, 0.10f, 0.10f, 1f);
 
-            // Fill bar
+            // Fill rect — width driven by anchorMax.x (0=empty … 1=full).
+            // Using a plain Simple image so no sprite is required.
             var fillGo = new GameObject("Fill");
-            fillGo.transform.SetParent(canvasGo.transform, false);
+            fillGo.transform.SetParent(barGo.transform, false);
             var fillRt = fillGo.AddComponent<RectTransform>();
             fillRt.anchorMin = Vector2.zero;
-            fillRt.anchorMax = Vector2.one;
-            fillRt.offsetMin = new Vector2(2f, 2f);
-            fillRt.offsetMax = new Vector2(-2f, -2f);
-            var fillImg = fillGo.AddComponent<Image>();
-            fillImg.color      = new Color(0.20f, 0.85f, 0.25f, 1f);
-            fillImg.type       = Image.Type.Filled;
-            fillImg.fillMethod = Image.FillMethod.Horizontal;
-            fillImg.fillAmount = 1f;
+            fillRt.anchorMax = Vector2.one;   // full at start
+            fillRt.offsetMin = Vector2.zero;
+            fillRt.offsetMax = Vector2.zero;
+            var fill = fillGo.AddComponent<Image>();
+            fill.color = fillColor;
 
-            var healthBar = gameObject.AddComponent<EnemyHealthBar>();
-            healthBar.Initialize(canvas, fillImg, bgImg);
+            // Centred label — child of container so it sits above fill
+            var labelGo = new GameObject("Label");
+            labelGo.transform.SetParent(barGo.transform, false);
+            var labelRt = labelGo.AddComponent<RectTransform>();
+            labelRt.anchorMin = Vector2.zero;
+            labelRt.anchorMax = Vector2.one;
+            labelRt.offsetMin = Vector2.zero;
+            labelRt.offsetMax = Vector2.zero;
+            var tmp = labelGo.AddComponent<TextMeshProUGUI>();
+            tmp.alignment        = TextAlignmentOptions.Center;
+            tmp.fontSize         = fontSize;
+            tmp.fontStyle        = FontStyles.Bold;
+            tmp.color            = Color.white;
+            tmp.enableAutoSizing = false;
+            tmp.text             = "–";
+            if (font != null) tmp.font = font;
 
-            canvasGo.SetActive(false);
+            return (fill, tmp);
         }
     }
 }

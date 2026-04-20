@@ -97,6 +97,7 @@ namespace PokemonAdventure.Units
 
         private IPlayerInput _input;
         private bool         _inputEnabled;
+        private bool         _isActiveControlledUnit;
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
@@ -107,11 +108,18 @@ namespace PokemonAdventure.Units
             if (_input == null)
                 Debug.LogWarning("[PlayerUnitController] IPlayerInput not found. " +
                                  "Add PlayerInputProvider to the scene.");
+
+            GameEventBus.Subscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
+        }
+
+        private void OnDestroy()
+        {
+            GameEventBus.Unsubscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void Update()
         {
-            if (!_inputEnabled || _input == null) return;
+            if (!_inputEnabled || !_isActiveControlledUnit || _input == null) return;
 
             if (_input.EndTurnPressed)
                 RequestEndTurn();
@@ -122,6 +130,8 @@ namespace PokemonAdventure.Units
         protected override void OnTurnStarted()
         {
             _inputEnabled = true;
+            // Auto-switch focus so camera and input follow this unit's combat turn
+            GameEventBus.Publish(new ActiveUnitChangedEvent { UnitId = Unit.UnitId });
             Debug.Log($"[PlayerUnitController] Slot {_playerSlotIndex}: {Unit.DisplayName}'s turn. " +
                       $"AP={Unit.RuntimeState.CurrentAP}  (Space = end turn)");
         }
@@ -129,6 +139,13 @@ namespace PokemonAdventure.Units
         protected override void OnTurnEnded()
         {
             _inputEnabled = false;
+        }
+
+        // ── Event Handlers ────────────────────────────────────────────────────
+
+        private void OnActiveUnitChanged(ActiveUnitChangedEvent evt)
+        {
+            _isActiveControlledUnit = Unit != null && evt.UnitId == Unit.UnitId;
         }
     }
 }

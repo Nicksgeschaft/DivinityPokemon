@@ -106,6 +106,16 @@ namespace PokemonAdventure.Combat
             _queue.AddUnit(unit);
         }
 
+        /// <summary>
+        /// Add a unit that walked into the combat zone mid-round.
+        /// Placed at the END of the current round; sorted normally from next round on.
+        /// </summary>
+        public void AddUnitAtEndOfRound(BaseUnit unit)
+        {
+            _encounter?.AddUnit(unit);
+            _queue.AddUnitAtEndOfRound(unit);
+        }
+
         /// <summary>Remove a unit (death, escape). Advances the turn if it was active.</summary>
         public void RemoveUnit(BaseUnit unit)
         {
@@ -115,7 +125,22 @@ namespace PokemonAdventure.Combat
             if (wasActive)
             {
                 ActiveUnit = null;
-                AdvanceToNextTurn();
+                AdvanceToNextTurn(); // checks end condition internally
+            }
+            else
+            {
+                // Dead unit was not active — check if all enemies are gone right now
+                if (_encounter != null && _encounter.CheckEndCondition(out bool playerWon))
+                {
+                    SetPhase(TurnPhase.EncounterEnd);
+                    Debug.Log($"[TurnManager] Encounter over (non-active unit died). PlayerVictory={playerWon}");
+                    GameEventBus.Publish(new CombatEndedEvent
+                    {
+                        EncounterId   = _encounter.EncounterId,
+                        PlayerVictory = playerWon
+                    });
+                    Stop();
+                }
             }
         }
 

@@ -25,9 +25,13 @@ namespace PokemonAdventure.UI
         [Tooltip("TMP label centred on the slot showing remaining turns.")]
         [SerializeField] private TextMeshProUGUI _cooldownText;
 
+        [Header("AP Cost Icons")]
+        [Tooltip("4 AP cost icons left-to-right. Shown count matches skill.APCost (max 4).")]
+        [SerializeField] private Image[] _apCostIcons = new Image[4];
+
         [Header("Selected State")]
-        [SerializeField] private Color _defaultTint  = Color.white;
-        [SerializeField] private Color _selectedTint = new Color(1f, 0.92f, 0.4f, 1f);
+        [Tooltip("Image used as the orange border frame. Enable/disable to show selection.")]
+        [SerializeField] private Image _selectionBorder;
 
         public int             SlotIndex     { get; private set; }
         public SkillDefinition AssignedSkill { get; private set; }
@@ -42,6 +46,7 @@ namespace PokemonAdventure.UI
         {
             var btn = GetComponent<Button>();
             btn.onClick.AddListener(() => OnSlotClicked?.Invoke(this));
+            if (_selectionBorder != null) _selectionBorder.enabled = false;
             ClearCooldown();
         }
 
@@ -64,17 +69,30 @@ namespace PokemonAdventure.UI
 
             if (_abilityIcon != null)
             {
-                _abilityIcon.sprite  = skill?.SkillIcon;
-                _abilityIcon.enabled = skill?.SkillIcon != null;
+                _abilityIcon.sprite   = skill?.SkillIcon;
+                _abilityIcon.enabled  = skill?.SkillIcon != null;
+                _abilityIcon.color    = skill != null ? Color.white : new Color(1f, 1f, 1f, 0.25f);
             }
 
+            RefreshAPCostIcons(skill?.APCost ?? 0);
             ClearCooldown();
+
+            GetComponent<Button>().interactable = skill != null;
+        }
+
+        private void RefreshAPCostIcons(int apCost)
+        {
+            for (int i = 0; i < _apCostIcons.Length; i++)
+            {
+                if (_apCostIcons[i] != null)
+                    _apCostIcons[i].enabled = i < apCost;
+            }
         }
 
         public void SetSelected(bool selected)
         {
-            if (_slotBackground != null)
-                _slotBackground.color = selected ? _selectedTint : _defaultTint;
+            if (_selectionBorder != null)
+                _selectionBorder.enabled = selected;
         }
 
         /// <summary>
@@ -94,7 +112,6 @@ namespace PokemonAdventure.UI
             if (_cooldownOverlay != null)
             {
                 _cooldownOverlay.gameObject.SetActive(true);
-                // fillAmount 1 = full (skill just used); 0 = ready
                 _cooldownOverlay.fillAmount = (float)remaining / maxCooldown;
             }
 
@@ -103,6 +120,8 @@ namespace PokemonAdventure.UI
                 _cooldownText.gameObject.SetActive(true);
                 _cooldownText.text = remaining.ToString();
             }
+
+            GetComponent<Button>().interactable = false;
         }
 
         public void ClearCooldown()
@@ -118,6 +137,8 @@ namespace PokemonAdventure.UI
                 _cooldownText.gameObject.SetActive(false);
                 _cooldownText.text = string.Empty;
             }
+
+            GetComponent<Button>().interactable = AssignedSkill != null;
         }
 
         // ── Pointer Events (overworld skill preview) ──────────────────────────

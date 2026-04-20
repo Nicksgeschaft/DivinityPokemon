@@ -595,11 +595,16 @@ namespace PokemonAdventure.Editor
             var evt = Event.current;
             if (evt == null) return;
 
-            bool leftDown  = evt.type == EventType.MouseDown  && evt.button == 0;
-            bool leftDrag  = evt.type == EventType.MouseDrag  && evt.button == 0;
-            bool rightDown = evt.type == EventType.MouseDown  && evt.button == 1;
-            bool rightDrag = evt.type == EventType.MouseDrag  && evt.button == 1;
+            // Alt held = Scene View orbit — never consume, let Unity handle it
+            if (evt.alt) return;
+
+            bool leftDown  = evt.type == EventType.MouseDown && evt.button == 0;
+            bool leftDrag  = evt.type == EventType.MouseDrag && evt.button == 0;
+            bool rightDown = evt.type == EventType.MouseDown && evt.button == 1;
             bool mouseUp   = evt.type == EventType.MouseUp;
+
+            // Middle-click and right-click drag go to Scene View camera — don't touch them
+            if (evt.button == 2) return;
 
             if (leftDown || leftDrag)
             {
@@ -618,8 +623,9 @@ namespace PokemonAdventure.Editor
                 }
                 evt.Use();
             }
-            else if (rightDown || rightDrag)
+            else if (rightDown)
             {
+                // Single right-click erases one tile; right-drag is free for camera
                 if (_hoveredCell.HasValue)
                     ApplyPaint(_hoveredCell.Value, erase: true);
                 evt.Use();
@@ -632,6 +638,10 @@ namespace PokemonAdventure.Editor
         {
             var evt = Event.current;
             if (evt?.type != EventType.KeyDown) return;
+
+            // Right-click held = fly mode — don't steal WASD/E from Scene View navigation
+            if (evt.button == 1 || Event.current.isMouse) return;
+            if (UnityEngine.Input.GetMouseButton(1)) return;
 
             switch (evt.keyCode)
             {

@@ -49,6 +49,12 @@ namespace PokemonAdventure.ScriptableObjects
         [Header("Skills")]
         public List<SkillDefinition> StartingSkills = new();
 
+        // ── Movement ──────────────────────────────────────────────────────────
+
+        [Header("Movement")]
+        [Tooltip("Maximum grid cells this enemy may move per turn (caps their AP-based movement).")]
+        [Range(1, 12)] public int MovementRange = 3;
+
         // ── AI Behaviour ──────────────────────────────────────────────────────
 
         [Header("AI Behaviour")]

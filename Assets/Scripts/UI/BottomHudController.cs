@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 using PokemonAdventure.Core;
 using PokemonAdventure.Data;
@@ -7,6 +8,10 @@ namespace PokemonAdventure.UI
 {
     // Wires the BottomHudRoot to the currently controlled PlayerUnit.
     // Delegates display work to specialised sub-UI components.
+    //
+    // Combat-only elements (AP bar, End Turn, armor bars) are shown only when
+    // the tracked unit is an active participant in the current encounter.
+    // Switching to a character outside the combat zone hides them.
     public class BottomHudController : MonoBehaviour
     {
         [Header("Sub-UI Components")]
@@ -17,14 +22,14 @@ namespace PokemonAdventure.UI
         [SerializeField] private QuickMenuUI        _quickMenuUI;
         [SerializeField] private PassTurnButtonUI   _passTurnUI;
 
-        private BaseUnit _trackedUnit;
-        private bool     _inCombat;
+        private BaseUnit           _trackedUnit;
+        private bool               _inCombat;
+        private HashSet<string>    _combatParticipants = new();
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
-            // Hide combat-only elements immediately — before any Start() or event fires.
             SetCombatOnlyRootsVisible(false);
             _statusBarsUI?.SetCombatMode(false);
         }
@@ -34,6 +39,9 @@ namespace PokemonAdventure.UI
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
             GameEventBus.Subscribe<DamageDealtEvent>(OnDamageDealt);
+            GameEventBus.Subscribe<UnitRegisteredEvent>(OnUnitRegistered);
+            GameEventBus.Subscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
+            GameEventBus.Subscribe<UnitEnteredCombatEvent>(OnUnitEnteredCombat);
         }
 
         private void OnDisable()
@@ -41,6 +49,9 @@ namespace PokemonAdventure.UI
             GameEventBus.Unsubscribe<TurnStartedEvent>(OnTurnStarted);
             GameEventBus.Unsubscribe<GameStateChangedEvent>(OnGameStateChanged);
             GameEventBus.Unsubscribe<DamageDealtEvent>(OnDamageDealt);
+            GameEventBus.Unsubscribe<UnitRegisteredEvent>(OnUnitRegistered);
+            GameEventBus.Unsubscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
+            GameEventBus.Unsubscribe<UnitEnteredCombatEvent>(OnUnitEnteredCombat);
         }
 
         private void Start()
@@ -58,6 +69,7 @@ namespace PokemonAdventure.UI
             _statusBarsUI?.SetUnit(unit);
             _skillBarUI?.SetUnit(unit);
             _apBarUI?.SetUnit(unit);
+            RefreshCombatUI();
         }
 
         // ── Event Handlers ────────────────────────────────────────────────────
@@ -76,23 +88,25 @@ namespace PokemonAdventure.UI
         private void OnGameStateChanged(GameStateChangedEvent evt)
         {
             _inCombat = evt.NewState == GameState.Combat;
-            _statusBarsUI?.SetCombatMode(_inCombat);
 
-            // Ensure tracked unit is wired BEFORE making the combat UI visible,
-            // so the AP bar shows the correct state in OnEnable rather than 0.
+            if (!_inCombat)
+                _combatParticipants.Clear();
+
             if (_inCombat && _trackedUnit == null)
             {
                 var player = FindAnyObjectByType<PlayerUnit>();
                 if (player != null) SetTrackedUnit(player);
             }
 
-            SetCombatOnlyRootsVisible(_inCombat);
+            RefreshCombatUI();
         }
 
-        private void SetCombatOnlyRootsVisible(bool visible)
+        private void OnUnitEnteredCombat(UnitEnteredCombatEvent evt)
         {
-            if (_apBarUI   != null) _apBarUI.gameObject.SetActive(visible);
-            if (_passTurnUI != null) _passTurnUI.gameObject.SetActive(visible);
+            _combatParticipants.Add(evt.UnitId);
+            // Re-evaluate visibility in case the tracked unit just joined combat
+            if (_trackedUnit != null && evt.UnitId == _trackedUnit.UnitId)
+                RefreshCombatUI();
         }
 
         private void OnDamageDealt(DamageDealtEvent evt)
@@ -100,6 +114,43 @@ namespace PokemonAdventure.UI
             if (_trackedUnit == null) return;
             if (evt.DefenderUnitId == _trackedUnit.UnitId)
                 _statusBarsUI?.Refresh();
+        }
+
+        private void OnUnitRegistered(UnitRegisteredEvent evt)
+        {
+            if (_trackedUnit != null) return;
+            if (evt.Faction != UnitFaction.Friendly) return;
+
+            var registry = ServiceLocator.Get<UnitRegistry>();
+            var unit = registry?.Get(evt.UnitId);
+            if (unit != null) SetTrackedUnit(unit);
+        }
+
+        private void OnActiveUnitChanged(ActiveUnitChangedEvent evt)
+        {
+            var registry = ServiceLocator.Get<UnitRegistry>();
+            var unit = registry?.Get(evt.UnitId);
+            if (unit != null) SetTrackedUnit(unit);
+        }
+
+        // ── Combat UI Visibility ──────────────────────────────────────────────
+
+        // Combat elements are shown only when the tracked unit is actually
+        // participating in the current encounter, not just because a fight is active.
+        private void RefreshCombatUI()
+        {
+            bool showCombatUI = _inCombat && IsTrackedUnitParticipant();
+            SetCombatOnlyRootsVisible(showCombatUI);
+            _statusBarsUI?.SetCombatMode(showCombatUI);
+        }
+
+        private bool IsTrackedUnitParticipant() =>
+            _trackedUnit != null && _combatParticipants.Contains(_trackedUnit.UnitId);
+
+        private void SetCombatOnlyRootsVisible(bool visible)
+        {
+            if (_apBarUI    != null) _apBarUI.gameObject.SetActive(visible);
+            if (_passTurnUI != null) _passTurnUI.gameObject.SetActive(visible);
         }
     }
 }

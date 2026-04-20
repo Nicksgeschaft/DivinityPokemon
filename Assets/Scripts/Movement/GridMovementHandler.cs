@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using PokemonAdventure.Core;
+using PokemonAdventure.Data;
 using PokemonAdventure.Grid;
 using PokemonAdventure.Units;
 
@@ -153,7 +154,8 @@ namespace PokemonAdventure.Movement
         /// </summary>
         public static HashSet<Vector2Int> GetMovementRange(BaseUnit unit, WorldGridManager gridManager)
         {
-            int rangeInCells = MovementCostCalculator.GetMovementRangeInCells(unit.RuntimeState);
+            bool isWild = unit.Faction == Data.UnitFaction.Hostile;
+            int rangeInCells = MovementCostCalculator.GetMovementRangeInCells(unit.RuntimeState, unit.Stats, isWild);
             return PathfindingBase.GetReachableCells(
                 unit.RuntimeState.GridPosition,
                 rangeInCells,

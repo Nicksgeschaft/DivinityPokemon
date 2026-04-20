@@ -52,10 +52,25 @@ namespace PokemonAdventure.Combat
 
             DamageResult firstDamageResult = null;
 
+            // BaseDamage shortcut: used when the Effects list is empty
+            if (skill.Effects.Count == 0 && skill.BaseDamage > 0)
+            {
+                var quickEffect = new ScriptableObjects.SkillEffect
+                {
+                    EffectType     = ScriptableObjects.SkillEffectType.Damage,
+                    Target         = ScriptableObjects.EffectTarget.MainTarget,
+                    Power          = skill.BaseDamage,
+                    DamageCategory = skill.BaseDamageType
+                };
+                firstDamageResult = ResolveDamageEffect(skill, quickEffect, caster, target);
+                return firstDamageResult;
+            }
+
             foreach (var effect in skill.Effects)
             {
                 if (effect == null) continue;
                 if (effect.EffectType == SkillEffectType.ApplyGridSurface) continue;
+                if (effect.ApplyChance < 100 && Random.Range(0, 100) >= effect.ApplyChance) continue;
 
                 var effectTarget = effect.Target == EffectTarget.Caster ? caster : target;
                 if (effectTarget == null || !effectTarget.IsAlive) continue;
@@ -209,8 +224,6 @@ namespace PokemonAdventure.Combat
         private static void ResolveStatusEffect(SkillEffect effect, IUnit caster, IUnit target)
         {
             if (effect.StatusType == StatusEffectType.None) return;
-            if (effect.ApplyChance <= 0) return;
-            if (Random.Range(0, 100) >= effect.ApplyChance) return;
 
             target.ApplyStatusEffect(new StatusEffectInstance
             {

@@ -69,5 +69,8 @@ namespace PokemonAdventure.Core
 
         /// <summary>Mouse wheel / right-stick Y for camera zoom.</summary>
         float ScrollDelta { get; }
+
+        /// <summary>Cycle to the next party member (Tab).</summary>
+        bool SwitchCharacterPressed { get; }
     }
 }

@@ -84,11 +84,38 @@ namespace PokemonAdventure.Combat
             if (_activeEncounter != null && _activeEncounter.IsActive)
             {
                 foreach (var u in participants)
+                {
                     _turnManager.AddUnit(u);
+                    GameEventBus.Publish(new UnitEnteredCombatEvent
+                    {
+                        UnitId      = u.UnitId,
+                        EncounterId = _activeEncounter.EncounterId
+                    });
+                }
                 return;
             }
 
             StartCoroutine(BeginEncounterRoutine(participants, zoneCenter));
+        }
+
+        /// <summary>
+        /// Called when a free-moving friendly unit walks into the combat zone.
+        /// Adds them at the end of the current round's initiative.
+        /// </summary>
+        public void JoinCombat(BaseUnit unit)
+        {
+            if (_activeEncounter == null || !_activeEncounter.IsActive) return;
+            if (_activeEncounter.Participants.Contains(unit)) return;
+
+            _turnManager.AddUnitAtEndOfRound(unit);
+
+            GameEventBus.Publish(new UnitEnteredCombatEvent
+            {
+                UnitId      = unit.UnitId,
+                EncounterId = _activeEncounter.EncounterId
+            });
+
+            Debug.Log($"[CombatStateController] {unit.DisplayName} walked into the combat zone and joined.");
         }
 
         // ── Encounter Lifecycle ───────────────────────────────────────────────
@@ -99,6 +126,14 @@ namespace PokemonAdventure.Combat
             yield return new WaitForSeconds(_transitionInDuration);
 
             _activeEncounter = new CombatEncounter(participants);
+
+            // Notify each participant so they can disable overworld movement
+            foreach (var p in participants)
+                GameEventBus.Publish(new UnitEnteredCombatEvent
+                {
+                    UnitId      = p.UnitId,
+                    EncounterId = _activeEncounter.EncounterId
+                });
 
             // Grid overlay is managed per-cell by CombatMovementController
             _gridOverlay?.HideAll();
@@ -153,7 +188,9 @@ namespace PokemonAdventure.Combat
                        .FirstOrDefault(u => u.UnitId == evt.UnitId);
             if (dead == null) return;
 
+            // TurnManager.RemoveUnit handles end-condition check internally
             _turnManager.RemoveUnit(dead);
+            _activeEncounter.RemoveUnit(dead);
 
             // Only destroy hostile units — friendly deaths stay for the results screen
             if (dead.Faction == UnitFaction.Hostile)

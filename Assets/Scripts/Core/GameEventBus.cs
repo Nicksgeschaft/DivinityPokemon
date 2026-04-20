@@ -140,7 +140,8 @@ namespace PokemonAdventure.Core
     public struct ActionExecutedEvent
     {
         public string ActorUnitId;
-        public string ActionName;
+        public string ActionName; // human-readable label (SkillName or "BasicAttack")
+        public string SkillId;    // machine-readable ID for registry lookups; empty for BasicAttack
         public int APSpent;
     }
 
@@ -220,6 +221,15 @@ namespace PokemonAdventure.Core
         public int    Delta;
     }
 
+    // ── Unit Lifecycle ────────────────────────────────────────────────────────
+
+    /// <summary>Published by BaseUnit.Start() immediately after it registers with UnitRegistry.</summary>
+    public struct UnitRegisteredEvent
+    {
+        public string UnitId;
+        public Data.UnitFaction Faction;
+    }
+
     // ── Skill Preview (Overworld) ─────────────────────────────────────────────
 
     /// <summary>
@@ -230,6 +240,17 @@ namespace PokemonAdventure.Core
     {
         public string CasterUnitId;
         public string SkillId; // empty = clear
+    }
+
+    // ── Overworld Active Unit ─────────────────────────────────────────────────
+
+    /// <summary>
+    /// Published when the player switches which overworld character they control.
+    /// OverworldMovementController enables input only for the matching unit.
+    /// </summary>
+    public struct ActiveUnitChangedEvent
+    {
+        public string UnitId;
     }
 
     // ── Damage ────────────────────────────────────────────────────────────────

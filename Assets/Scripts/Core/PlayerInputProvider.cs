@@ -104,5 +104,9 @@ namespace PokemonAdventure.Core
         // Divide by 120 to match legacy Input.GetAxis("Mouse ScrollWheel") scale (~1/click).
         public float ScrollDelta =>
             (Mouse.current?.scroll.ReadValue().y ?? 0f) / 120f;
+
+        public bool SwitchCharacterPressed =>
+            Keyboard.current?.tabKey.wasPressedThisFrame ?? false;
+
     }
 }

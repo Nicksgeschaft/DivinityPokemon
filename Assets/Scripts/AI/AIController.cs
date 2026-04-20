@@ -88,7 +88,7 @@ namespace PokemonAdventure.AI
         {
             yield return new WaitForSeconds(_actionDelay);
 
-            var state    = Unit.RuntimeState;
+            var state     = Unit.RuntimeState;
             var encounter = GetCombatController()?.ActiveEncounter;
             if (encounter == null) { RequestEndTurn(); yield break; }
 
@@ -99,26 +99,32 @@ namespace PokemonAdventure.AI
 
             var primaryTarget = targets[0];
 
-            // ── Step 1: Move once toward target if not already adjacent ────────
+            // ── Step 1: Move toward target up to Initiative-based movement range ──
             if (_gridManager != null)
             {
-                int dist = GridUtility.ManhattanDistance(
-                    state.GridPosition, primaryTarget.RuntimeState.GridPosition);
-
-                if (dist > 1)
-                {
-                    yield return StartCoroutine(MoveTowardTarget(primaryTarget));
-                    yield return new WaitForSeconds(_actionDelay);
-                }
+                yield return StartCoroutine(MoveTowardTarget(primaryTarget));
+                yield return new WaitForSeconds(_actionDelay);
             }
 
-            // ── Step 2: Attack once if adjacent and can afford it ─────────────
+            // ── Step 2: Use a skill if target is in range, else end turn ──────
             if (_gridManager != null && state.CanAfford(1))
             {
                 int dist = GridUtility.ManhattanDistance(
                     state.GridPosition, primaryTarget.RuntimeState.GridPosition);
 
-                if (dist <= 1)
+                var skill = GetUsableSkillInRange(dist);
+
+                if (skill != null)
+                {
+                    var handler = GetComponent<Combat.SkillExecutionHandler>() ??
+                                  FindAnyObjectByType<Combat.SkillExecutionHandler>();
+                    if (handler != null)
+                    {
+                        handler.ExecuteDirect(skill, Unit, primaryTarget);
+                        yield return new WaitForSeconds(_actionDelay);
+                    }
+                }
+                else if (dist <= 1)
                 {
                     ExecuteBasicAttack(primaryTarget);
                     state.TrySpendAP(1);
@@ -129,36 +135,62 @@ namespace PokemonAdventure.AI
             RequestEndTurn();
         }
 
+        private SkillDefinition GetUsableSkillInRange(int dist)
+        {
+            if (_archetype == null) return null;
+            foreach (var skill in _archetype.StartingSkills)
+            {
+                if (skill == null) continue;
+                if (!Unit.RuntimeState.IsOnCooldown(skill.SkillId) &&
+                    dist <= skill.Range &&
+                    Unit.RuntimeState.CanAfford(skill.APCost))
+                    return skill;
+            }
+            return null;
+        }
+
         private IEnumerator MoveTowardTarget(BaseUnit target)
         {
             if (_gridManager == null) yield break;
 
-            // Find a cell adjacent to the target
+            // Get all cells reachable within Initiative-based movement tier
+            var reachable = GridMovementHandler.GetMovementRange(Unit, _gridManager);
+            if (reachable.Count == 0) yield break;
+
+            // Pick the reachable cell closest to the target
             var targetPos = target.RuntimeState.GridPosition;
-            Vector2Int? bestMoveTarget = null;
+            Vector2Int? bestCell = null;
             int bestDist = int.MaxValue;
 
-            foreach (var neighbour in _gridManager.GetNeighbours(targetPos, false))
+            foreach (var pos in reachable)
             {
-                if (!neighbour.IsPassable) continue;
-                int dist = GridUtility.ManhattanDistance(
-                    Unit.RuntimeState.GridPosition, neighbour.GridPosition);
+                if (pos == Unit.RuntimeState.GridPosition) continue;
+                var cell = _gridManager.GetCell(pos);
+                if (cell == null || !cell.IsPassable || cell.OccupyingUnit != null) continue;
+
+                int dist = GridUtility.ManhattanDistance(pos, targetPos);
                 if (dist < bestDist)
                 {
-                    bestDist       = dist;
-                    bestMoveTarget = neighbour.GridPosition;
+                    bestDist = dist;
+                    bestCell = pos;
                 }
             }
 
-            if (!bestMoveTarget.HasValue) yield break;
+            if (!bestCell.HasValue) yield break;
 
-            var request = GridMovementHandler.BuildRequest(Unit, bestMoveTarget.Value, _gridManager);
+            var request = GridMovementHandler.BuildRequest(Unit, bestCell.Value, _gridManager);
             if (request.IsValid)
                 yield return StartCoroutine(GridMovementHandler.ExecuteMovement(request, _gridManager));
         }
 
         private void ExecuteBasicAttack(BaseUnit target)
         {
+            // Face the target before attacking
+            var dir = target.transform.position - Unit.transform.position;
+            dir.y = 0f;
+            if (dir.sqrMagnitude > 0.001f)
+                Unit.transform.rotation = Quaternion.LookRotation(dir, Vector3.up);
+
             float rawDamage  = Unit.Stats.EffectiveAttack;
 
             // Snapshot pre-damage values so DamageDealtEvent carries correct deltas
@@ -234,6 +266,8 @@ namespace PokemonAdventure.AI
             SetFaction(UnitFaction.Hostile);
             SetDisplayName(archetype.EnemyName);
             RuntimeState?.Initialize(_stats);
+            if (RuntimeState != null)
+                RuntimeState.MaxMoveRange = archetype.MovementRange;
         }
     }
 }

@@ -41,6 +41,9 @@ namespace PokemonAdventure.Units
 
         // ── Turn Tracking ─────────────────────────────────────────────────────
 
+        /// <summary>Maximum cells this unit may move per turn (set from archetype; default = uncapped).</summary>
+        public int MaxMoveRange = int.MaxValue;
+
         /// <summary>Has this unit taken at least one action this turn?</summary>
         public bool HasActedThisTurn;
 

@@ -38,11 +38,15 @@ namespace PokemonAdventure.Units
         private void Start()
         {
             GameEventBus.Subscribe<TurnStartedEvent>(OnTurnStarted);
+            GameEventBus.Subscribe<CombatEndedEvent>(OnCombatEnded);
+            GameEventBus.Subscribe<WorldTickEvent>(OnWorldTick);
         }
 
         private void OnDestroy()
         {
             GameEventBus.Unsubscribe<TurnStartedEvent>(OnTurnStarted);
+            GameEventBus.Unsubscribe<CombatEndedEvent>(OnCombatEnded);
+            GameEventBus.Unsubscribe<WorldTickEvent>(OnWorldTick);
         }
 
         // ── Public API ────────────────────────────────────────────────────────
@@ -87,6 +91,26 @@ namespace PokemonAdventure.Units
             // AP was already gained by UnitController.BeginTurn() before this event fired.
             // Just broadcast the updated value so the UI refreshes.
             Broadcast(0);
+        }
+
+        // ── Combat End ────────────────────────────────────────────────────────
+
+        private void OnCombatEnded(CombatEndedEvent evt)
+        {
+            if (_unit == null) return;
+            _unit.RuntimeState.CurrentAP = 0;
+            _unit.RuntimeState.CurrentPhysicalArmor = _unit.Stats.MaxPhysicalArmor;
+            _unit.RuntimeState.CurrentSpecialArmor  = _unit.Stats.MaxSpecialArmor;
+            _unit.SnapToGridPosition();
+            Broadcast(0);
+        }
+
+        // ── Overworld Tick (cooldowns) ────────────────────────────────────────
+
+        private void OnWorldTick(WorldTickEvent evt)
+        {
+            if (_unit == null) return;
+            _unit.RuntimeState.TickCooldowns();
         }
 
         // ── Helper ────────────────────────────────────────────────────────────

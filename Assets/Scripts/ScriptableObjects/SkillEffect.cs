@@ -51,6 +51,11 @@ namespace PokemonAdventure.ScriptableObjects
         [Tooltip("Who receives this effect.")]
         public EffectTarget Target = EffectTarget.MainTarget;
 
+        [Tooltip("Probability (0–100) that this effect fires at all on a successful hit. " +
+                 "100 = always. Works for every effect type — e.g. set to 10 to give a " +
+                 "Damage effect a 10 % proc chance.")]
+        [Range(0, 100)] public int ApplyChance = 100;
+
         // ── Damage / Heal / Shield ────────────────────────────────────────────
 
         [Tooltip("Base power for Damage, HP amount for Heal, armor amount for Shield.")]
@@ -64,9 +69,6 @@ namespace PokemonAdventure.ScriptableObjects
 
         [Tooltip("Status effect to inflict on the target.")]
         public StatusEffectType StatusType = StatusEffectType.None;
-
-        [Tooltip("Probability (0–100) to apply the status on a successful hit.")]
-        [Range(0, 100)] public int ApplyChance = 100;
 
         [Tooltip("How many turns the status lasts.")]
         [Min(1)] public int StatusDuration = 2;

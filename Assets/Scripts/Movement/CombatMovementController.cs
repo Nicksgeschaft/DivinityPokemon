@@ -63,6 +63,8 @@ namespace PokemonAdventure.Movement
 
         private bool                _isMyTurn;
         private bool                _isMoving;
+        private bool                _skillTargetingActive;
+        private bool                _isActiveControlledUnit;
         private Coroutine           _moveCoroutine;
         private HashSet<Vector2Int> _moveRange   = new();
         private List<Vector2Int>    _hoveredPath = new();
@@ -88,6 +90,10 @@ namespace PokemonAdventure.Movement
             GameEventBus.Subscribe<TurnEndedEvent>(OnTurnEnded);
             GameEventBus.Subscribe<APChangedEvent>(OnAPChanged);
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
+            GameEventBus.Subscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Subscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Subscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            GameEventBus.Subscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void OnDestroy()
@@ -96,11 +102,15 @@ namespace PokemonAdventure.Movement
             GameEventBus.Unsubscribe<TurnEndedEvent>(OnTurnEnded);
             GameEventBus.Unsubscribe<APChangedEvent>(OnAPChanged);
             GameEventBus.Unsubscribe<GameStateChangedEvent>(OnStateChanged);
+            GameEventBus.Unsubscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Unsubscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Unsubscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            GameEventBus.Unsubscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void Update()
         {
-            if (!_isMyTurn || _isMoving) return;
+            if (!_isMyTurn || !_isActiveControlledUnit || _isMoving || _skillTargetingActive) return;
             if (!(_stateManager?.IsInCombat ?? false)) return;
             if (_camera == null || _gridManager == null) return;
 
@@ -291,8 +301,45 @@ namespace PokemonAdventure.Movement
             if (evt.NewState != GameState.Combat)
             {
                 _isMyTurn = false;
+                _skillTargetingActive = false;
                 ClearAll();
             }
+        }
+
+        private void OnActiveUnitChanged(ActiveUnitChangedEvent evt)
+        {
+            _isActiveControlledUnit = _unit != null && evt.UnitId == _unit.UnitId;
+            // Clear movement highlights when player switches away from this unit mid-turn
+            if (!_isActiveControlledUnit && _isMyTurn)
+                ClearAll();
+        }
+
+        private void OnSkillTargetingStarted(SkillTargetingStartedEvent evt)
+        {
+            if (!_isMyTurn) return;
+            _skillTargetingActive = true;
+            ClearAll(); // hide movement overlay while targeting
+        }
+
+        private void OnSkillTargetingEnded(SkillTargetingCancelledEvent evt)
+        {
+            if (!_skillTargetingActive) return;
+            _skillTargetingActive = false;
+            RefreshMoveRange(); // restore movement overlay
+        }
+
+        private void OnSkillTargetingConfirmed(SkillTargetingConfirmedEvent evt)
+        {
+            if (!_skillTargetingActive) return;
+            // Delay one frame so the confirm click is not also processed as a move click
+            StartCoroutine(ClearTargetingNextFrame());
+        }
+
+        private System.Collections.IEnumerator ClearTargetingNextFrame()
+        {
+            yield return null;
+            _skillTargetingActive = false;
+            if (_isMyTurn) RefreshMoveRange();
         }
 
         // ── AP Cost Label ─────────────────────────────────────────────────────

@@ -31,6 +31,10 @@ namespace PokemonAdventure.World
         [Tooltip("World units per second while walking between cells.")]
         [SerializeField] private float _moveSpeed = 5f;
 
+        [Header("Combat Zone Join")]
+        [Tooltip("Grid-cell radius within which a free-moving unit automatically joins an active combat.")]
+        [SerializeField] private float _combatJoinRadius = 6f;
+
         [Header("Raycast")]
         [Tooltip("Layer mask for the ground plane. Ensure your terrain/floor uses this layer.")]
         [SerializeField] private LayerMask _groundLayer;
@@ -38,23 +42,31 @@ namespace PokemonAdventure.World
 
         // ── Services ──────────────────────────────────────────────────────────
 
-        private WorldGridManager _gridManager;
-        private GameStateManager _stateManager;
-        private IPlayerInput     _input;
-        private Camera           _camera;
-        private BaseUnit         _unit;
+        private WorldGridManager      _gridManager;
+        private GameStateManager      _stateManager;
+        private Combat.CombatStateController _combatController;
+        private IPlayerInput          _input;
+        private Camera                _camera;
+        private BaseUnit              _unit;
 
         // ── State ─────────────────────────────────────────────────────────────
 
         private Coroutine _moveCoroutine;
-        private bool      _isActive;
-        private bool      _stopRequested; // set true when CombatStartedEvent fires
+        private bool      _isOverworld;
+        private bool      _isControlled;           // true only for the currently active overworld unit
+        private bool      _stopRequested;          // set true when entering combat as participant
+        private bool      _skillTargetingActive;   // blocks movement while a skill is selected
+        private bool      _isInCombatEncounter;    // true when this unit is a participant in the active encounter
+        private bool      _isFreeMovementAllowed;  // true when in combat state but NOT a participant
 
         // ── Lifecycle ─────────────────────────────────────────────────────────
 
         private void Awake()
         {
             _unit = GetComponent<BaseUnit>();
+            // Subscribe in Awake so we catch ActiveUnitChangedEvent published
+            // in the same frame as AddComponent (before Start() runs)
+            GameEventBus.Subscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged);
         }
 
         private void Start()
@@ -62,28 +74,43 @@ namespace PokemonAdventure.World
             _gridManager  = ServiceLocator.Get<WorldGridManager>();
             _stateManager = ServiceLocator.Get<GameStateManager>();
             _input        = ServiceLocator.Get<IPlayerInput>();
+            ServiceLocator.TryGet(out _combatController);
             _camera       = Camera.main;
 
             GameEventBus.Subscribe<GameStateChangedEvent>(OnStateChanged);
-            GameEventBus.Subscribe<CombatStartedEvent>(OnCombatStarted);
+            GameEventBus.Subscribe<UnitEnteredCombatEvent>(OnUnitEnteredCombat);
+            GameEventBus.Subscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Subscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Subscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            // ActiveUnitChangedEvent already subscribed in Awake
 
-            _isActive = _stateManager?.IsInOverworld ?? true;
+            _isOverworld = _stateManager?.IsInOverworld ?? true;
         }
 
         private void OnDestroy()
         {
             GameEventBus.Unsubscribe<GameStateChangedEvent>(OnStateChanged);
-            GameEventBus.Unsubscribe<CombatStartedEvent>(OnCombatStarted);
+            GameEventBus.Unsubscribe<UnitEnteredCombatEvent>(OnUnitEnteredCombat);
+            GameEventBus.Unsubscribe<SkillTargetingStartedEvent>(OnSkillTargetingStarted);
+            GameEventBus.Unsubscribe<SkillTargetingCancelledEvent>(OnSkillTargetingEnded);
+            GameEventBus.Unsubscribe<SkillTargetingConfirmedEvent>(OnSkillTargetingConfirmed);
+            GameEventBus.Unsubscribe<ActiveUnitChangedEvent>(OnActiveUnitChanged); // subscribed in Awake
         }
 
         // ── Update ────────────────────────────────────────────────────────────
 
         private void Update()
         {
-            if (!_isActive || _camera == null || _gridManager == null) return;
+            if (!(_isOverworld || _isFreeMovementAllowed) || !_isControlled || _skillTargetingActive || _camera == null || _gridManager == null) return;
 
-            if (_input != null && _input.ConfirmPressed)
+            if (_input != null && _input.ConfirmPressed && !IsPointerOverUI())
                 HandleClick();
+        }
+
+        private static bool IsPointerOverUI()
+        {
+            var es = UnityEngine.EventSystems.EventSystem.current;
+            return es != null && es.IsPointerOverGameObject();
         }
 
         // ── Click Handler ─────────────────────────────────────────────────────
@@ -162,6 +189,13 @@ namespace PokemonAdventure.World
                     FireNearestTrigger(_unit.GridPosition, detectors);
                     yield break;
                 }
+
+                // ── Check if free-moving unit has walked into the combat zone ──
+                if (_isFreeMovementAllowed && IsInsideCombatZone(_unit.GridPosition))
+                {
+                    _combatController.JoinCombat(_unit);
+                    yield break;
+                }
             }
 
             _moveCoroutine = null;
@@ -181,6 +215,24 @@ namespace PokemonAdventure.World
 
             var newCell = _gridManager.GetCell(newPos);
             newCell?.SetOccupied(_unit);
+        }
+
+        // ── Combat Zone Detection ─────────────────────────────────────────────
+
+        private bool IsInsideCombatZone(Vector2Int gridPos)
+        {
+            if (_combatController == null) return false;
+            var encounter = _combatController.ActiveEncounter;
+            if (encounter == null || !encounter.IsActive) return false;
+
+            foreach (var participant in encounter.Participants)
+            {
+                if (participant == null || !participant.IsAlive) continue;
+                float dist = Vector2Int.Distance(gridPos, participant.GridPosition);
+                if (dist <= _combatJoinRadius)
+                    return true;
+            }
+            return false;
         }
 
         // ── Trigger Detection ─────────────────────────────────────────────────
@@ -241,29 +293,90 @@ namespace PokemonAdventure.World
 
         // ── Event Handlers ────────────────────────────────────────────────────
 
-        private void OnStateChanged(GameStateChangedEvent evt)
+        private void OnActiveUnitChanged(ActiveUnitChangedEvent evt)
         {
-            _isActive = evt.NewState == GameState.Overworld;
+            _isControlled = _unit != null && evt.UnitId == _unit.UnitId;
 
-            if (!_isActive)
+            // Stop movement if we just lost control
+            if (!_isControlled && _moveCoroutine != null)
             {
-                _stopRequested = true;
-                if (_moveCoroutine != null)
-                {
-                    StopCoroutine(_moveCoroutine);
-                    _moveCoroutine = null;
-                }
+                StopCoroutine(_moveCoroutine);
+                _moveCoroutine = null;
             }
         }
 
-        private void OnCombatStarted(CombatStartedEvent evt)
+        private void OnUnitEnteredCombat(UnitEnteredCombatEvent evt)
         {
-            _stopRequested = true;
+            if (_unit == null || evt.UnitId != _unit.UnitId) return;
+            _isInCombatEncounter   = true;
+            _isFreeMovementAllowed = false;
+            _stopRequested         = true;
             if (_moveCoroutine != null)
             {
                 StopCoroutine(_moveCoroutine);
                 _moveCoroutine = null;
             }
+        }
+
+        private void OnStateChanged(GameStateChangedEvent evt)
+        {
+            _isOverworld = evt.NewState == GameState.Overworld;
+
+            if (evt.NewState == GameState.Overworld)
+            {
+                // Reset all combat-related flags when returning to overworld
+                _isInCombatEncounter  = false;
+                _isFreeMovementAllowed = false;
+                return;
+            }
+
+            if (!_isOverworld)
+            {
+                if (_isInCombatEncounter)
+                {
+                    // This unit is a combat participant — stop overworld movement
+                    _isFreeMovementAllowed = false;
+                    _stopRequested = true;
+                    if (_moveCoroutine != null)
+                    {
+                        StopCoroutine(_moveCoroutine);
+                        _moveCoroutine = null;
+                    }
+                }
+                else
+                {
+                    // Not a participant — allow free movement during combat
+                    _isFreeMovementAllowed = true;
+                }
+            }
+        }
+
+        private void OnSkillTargetingStarted(SkillTargetingStartedEvent evt)
+        {
+            _skillTargetingActive = true;
+            // Stop any in-progress movement
+            if (_moveCoroutine != null)
+            {
+                StopCoroutine(_moveCoroutine);
+                _moveCoroutine = null;
+            }
+        }
+
+        private void OnSkillTargetingEnded(SkillTargetingCancelledEvent evt)
+        {
+            _skillTargetingActive = false;
+        }
+
+        private void OnSkillTargetingConfirmed(SkillTargetingConfirmedEvent evt)
+        {
+            // Delay one frame so the confirm click is not also processed as a move click
+            StartCoroutine(ClearTargetingNextFrame());
+        }
+
+        private System.Collections.IEnumerator ClearTargetingNextFrame()
+        {
+            yield return null;
+            _skillTargetingActive = false;
         }
 
         // ── Raycast ───────────────────────────────────────────────────────────

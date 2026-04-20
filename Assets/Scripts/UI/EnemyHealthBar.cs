@@ -29,6 +29,10 @@ namespace PokemonAdventure.UI
         [SerializeField] private float _midThreshold = 0.50f;
         [SerializeField] private float _lowThreshold = 0.25f;
 
+        [Header("Status Effects")]
+        [Tooltip("StatusIconStrip child panel. Optional — leave empty to skip.")]
+        [SerializeField] private StatusIconStrip _statusIconStrip;
+
         private BaseUnit _unit;
         private bool     _inCombat;
         private bool     _hovered;
@@ -68,6 +72,8 @@ namespace PokemonAdventure.UI
         {
             GameEventBus.Subscribe<DamageDealtEvent>(OnDamageDealt);
             GameEventBus.Subscribe<GameStateChangedEvent>(OnGameStateChanged);
+
+            _statusIconStrip?.SetUnit(_unit);
 
             SetVisible(false);
             Refresh();

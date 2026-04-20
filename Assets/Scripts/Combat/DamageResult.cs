@@ -49,6 +49,7 @@ namespace PokemonAdventure.Combat
 
         public EffectivenessCategory Effectiveness { get; set; }
         public bool                  WasKill       { get; set; }
+        public bool                  IsMiss        { get; set; }
 
         /// <summary>Named modifiers for debug display. See DamageModifierPipeline.</summary>
         public IReadOnlyList<DamageModifier> AppliedModifiers { get; set; }

@@ -296,12 +296,24 @@ namespace PokemonAdventure.Combat
         private static DamageResult CreateMissResult(SkillDefinition skill, IUnit caster, IUnit target)
         {
             Debug.Log($"[SkillResolver] {caster.DisplayName}'s {skill.SkillName} missed!");
+
+            GameEventBus.Publish(new DamageDealtEvent
+            {
+                AttackerUnitId = caster.UnitId,
+                DefenderUnitId = target.UnitId,
+                SkillId        = skill.SkillId,
+                FinalDamage    = 0, ArmorAbsorbed = 0, HPDamage = 0,
+                Effectiveness  = EffectivenessCategory.Normal,
+                IsMiss         = true
+            });
+
             return new DamageResult
             {
                 AttackerUnitId = caster.UnitId, DefenderUnitId = target.UnitId,
                 SkillId        = skill.SkillId,
                 FinalDamage    = 0, ArmorAbsorbed = 0, HPDamage = 0,
-                Effectiveness  = EffectivenessCategory.Normal
+                Effectiveness  = EffectivenessCategory.Normal,
+                IsMiss         = true
             };
         }
 

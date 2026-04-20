@@ -25,6 +25,10 @@ namespace PokemonAdventure.UI
         [Tooltip("ArmorRow root — hidden outside combat, shown during combat.")]
         [SerializeField] private GameObject _armorRowRoot;
 
+        [Header("Status Effects")]
+        [Tooltip("StatusIconStrip child panel. Optional — leave empty to skip.")]
+        [SerializeField] private StatusIconStrip _statusIconStrip;
+
         private BaseUnit _trackedUnit;
 
         // ── Public API ────────────────────────────────────────────────────────
@@ -32,6 +36,7 @@ namespace PokemonAdventure.UI
         public void SetUnit(BaseUnit unit)
         {
             _trackedUnit = unit;
+            _statusIconStrip?.SetUnit(unit);
             Refresh();
         }
 

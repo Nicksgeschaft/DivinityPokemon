@@ -3075,7 +3075,7 @@ MonoBehaviour:
     Terrain: 0
     Surface: 0
     IsWalkable: 1
-    CustomColor: {r: 0, g: 0, b: 0, a: 0}
+    CustomColor: {r: 1, g: 0, b: 1, a: 1}
   - GridPosition: {x: 6, y: 12}
     Terrain: 0
     Surface: 0
@@ -3565,12 +3565,12 @@ MonoBehaviour:
     Terrain: 0
     Surface: 0
     IsWalkable: 1
-    CustomColor: {r: 0, g: 0, b: 0, a: 0}
+    CustomColor: {r: 1, g: 0, b: 1, a: 1}
   - GridPosition: {x: 7, y: 11}
     Terrain: 0
     Surface: 0
     IsWalkable: 1
-    CustomColor: {r: 0, g: 0, b: 0, a: 0}
+    CustomColor: {r: 1, g: 0, b: 1, a: 1}
   - GridPosition: {x: 7, y: 12}
     Terrain: 0
     Surface: 0
@@ -4062,7 +4062,7 @@ MonoBehaviour:
     IsWalkable: 1
     CustomColor: {r: 0, g: 0, b: 0, a: 0}
   - GridPosition: {x: 8, y: 10}
-    Terrain: 9
+    Terrain: 0
     Surface: 0
     IsWalkable: 1
     CustomColor: {r: 1, g: 0, b: 1, a: 1}
@@ -4070,7 +4070,7 @@ MonoBehaviour:
     Terrain: 0
     Surface: 0
     IsWalkable: 1
-    CustomColor: {r: 0, g: 0, b: 0, a: 0}
+    CustomColor: {r: 1, g: 0, b: 1, a: 1}
   - GridPosition: {x: 8, y: 12}
     Terrain: 0
     Surface: 0
@@ -5552,11 +5552,6 @@ MonoBehaviour:
     IsWalkable: 1
     CustomColor: {r: 0, g: 0, b: 0, a: 0}
   - GridPosition: {x: 11, y: 8}
-    Terrain: 0
-    Surface: 0
-    IsWalkable: 1
-    CustomColor: {r: 0, g: 0, b: 0, a: 0}
-  - GridPosition: {x: 11, y: 9}
     Terrain: 0
     Surface: 0
     IsWalkable: 1
@@ -50011,6 +50006,11 @@ MonoBehaviour:
     Surface: 0
     IsWalkable: 1
     CustomColor: {r: 1, g: 0, b: 1, a: 1}
+  - GridPosition: {x: 11, y: 9}
+    Terrain: 0
+    Surface: 0
+    IsWalkable: 1
+    CustomColor: {r: 1, g: 0, b: 1, a: 1}
   Entities:
   - GridPosition: {x: 5, y: 22}
     EntityType: 4
@@ -50028,3 +50028,7 @@ MonoBehaviour:
     EntityType: 0
     EnemyArchetype: {fileID: 0}
     PlayerDefinition: {fileID: 11400000, guid: 6908bd3cf51064443a151c154457ccdd, type: 2}
+  - GridPosition: {x: 19, y: 3}
+    EntityType: 4
+    EnemyArchetype: {fileID: 11400000, guid: b5ec114d823936b439024a4095bd877c, type: 2}
+    PlayerDefinition: {fileID: 0}

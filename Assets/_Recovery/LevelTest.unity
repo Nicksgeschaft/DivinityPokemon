@@ -1986,6 +1986,7 @@ MonoBehaviour:
   _specArmorSlider: {fileID: 1923634418}
   _specArmorText: {fileID: 96825066}
   _armorRowRoot: {fileID: 1798473183}
+  _statusIconStrip: {fileID: 0}
 --- !u!1 &649908922
 GameObject:
   m_ObjectHideFlags: 0
@@ -4110,6 +4111,8 @@ GameObject:
   m_Component:
   - component: {fileID: 1638929302}
   - component: {fileID: 1638929303}
+  - component: {fileID: 1638929305}
+  - component: {fileID: 1638929304}
   m_Layer: 0
   m_Name: CombatManager
   m_TagString: Untagged
@@ -4144,6 +4147,35 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: c0ba886616f792148aef23fd5f2bde74, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.Combat.CombatManager
+--- !u!114 &1638929304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1638929301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ba9e0c1fa0ccadf459995790169c02dc, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.UI.CombatZoneOverlay
+  _zoneColor: {r: 1, g: 0.55, b: 0.1, a: 0.22}
+  _zoneRadius: 6
+--- !u!114 &1638929305
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1638929301}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f05ac44568d70754ca4f22be19be43cd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.UI.FloatingDamageManager
+  _textPrefab: {fileID: 9181072592680556750, guid: 7788be8d328d4a546b398e2794a7a781, type: 3}
+  _spawnOffset: {x: 0, y: 0.1, z: -1.5}
+  _poolSize: 12
 --- !u!224 &1660504953 stripped
 RectTransform:
   m_CorrespondingSourceObject: {fileID: 1353301199778554837, guid: ddf73bd00fedbbb4da9c43c69c37643a, type: 3}

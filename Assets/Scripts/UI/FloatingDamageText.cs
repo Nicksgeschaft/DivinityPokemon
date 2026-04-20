@@ -15,9 +15,11 @@ namespace PokemonAdventure.UI
     public class FloatingDamageText : MonoBehaviour
     {
         [Header("Animation")]
-        [SerializeField] private float _duration     = 1.1f;
-        [SerializeField] private float _riseSpeed    = 1.8f;
-        [SerializeField] private float _spreadRadius = 0.3f; // Random horizontal spread
+        [SerializeField] private float   _duration     = 1.4f;
+        [SerializeField] private float   _riseSpeed    = 1.3f;
+        [SerializeField] private float   _spreadRadius = 0.3f;
+        [Tooltip("Direction the number travels. Top-down camera: (0,0,-1) = screen-up.")]
+        [SerializeField] private Vector3 _riseDirection = new Vector3(0f, 0f, -1f);
 
         [Header("Font Sizes")]
         [SerializeField] private float _normalSize = 2.2f;
@@ -62,6 +64,18 @@ namespace PokemonAdventure.UI
             StartAnim();
         }
 
+        public void ShowText(string text, Color color, Vector3 worldPos)
+        {
+            transform.position = worldPos + new Vector3(
+                Random.Range(-_spreadRadius, _spreadRadius), 0f, 0f);
+
+            _tmp.text     = text;
+            _tmp.fontSize = _normalSize;
+            _tmp.color    = color;
+
+            StartAnim();
+        }
+
         public void ShowHeal(float amount, Vector3 worldPos)
         {
             transform.position = worldPos + new Vector3(
@@ -91,16 +105,17 @@ namespace PokemonAdventure.UI
             while (elapsed < _duration)
             {
                 elapsed += Time.deltaTime;
-                transform.position += Vector3.up * _riseSpeed * Time.deltaTime;
+                transform.position += _riseDirection.normalized * _riseSpeed * Time.deltaTime;
 
                 float t = elapsed / _duration;
                 // Fade out in last third
                 float alpha = t < 0.65f ? 1f : Mathf.Lerp(1f, 0f, (t - 0.65f) / 0.35f);
                 _tmp.color = new Color(startColor.r, startColor.g, startColor.b, alpha);
 
-                // Face camera every frame
+                // Align to camera's XY plane — no tilt for top-down orthographic
                 if (Camera.main != null)
-                    transform.rotation = Camera.main.transform.rotation;
+                    transform.rotation = Quaternion.Euler(
+                        Camera.main.transform.eulerAngles.x, 0f, 0f);
 
                 yield return null;
             }

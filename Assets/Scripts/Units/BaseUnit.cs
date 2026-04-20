@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using UnityEngine;
 using PokemonAdventure.Core;
 using PokemonAdventure.Data;
@@ -182,18 +183,32 @@ namespace PokemonAdventure.Units
             });
         }
 
-        public virtual void RemoveStatusEffect(StatusEffectType effectType) =>
+        public virtual void RemoveStatusEffect(StatusEffectType effectType)
+        {
+            if (!_runtimeState.HasStatus(effectType)) return;
             _runtimeState.RemoveStatus(effectType);
+            GameEventBus.Publish(new UnitStatusRemovedEvent { UnitId = UnitId, EffectType = effectType });
+        }
 
         // ── IUnit: Turn Hooks ─────────────────────────────────────────────────
 
         public virtual void OnTurnStart()
         {
             _runtimeState.GainTurnAP();
+
+            // Detect which effects expire this tick (RemainingTurns == 1 → becomes 0 after Tick())
+            var expiring = new List<StatusEffectType>();
+            foreach (var e in _runtimeState.ActiveStatusEffects)
+                if (e.RemainingTurns == 1)
+                    expiring.Add(e.EffectType);
+
             _runtimeState.TickStatusEffects();
             _runtimeState.TickCooldowns();
             _runtimeState.HasActedThisTurn = false;
             _runtimeState.HasMovedThisTurn = false;
+
+            foreach (var type in expiring)
+                GameEventBus.Publish(new UnitStatusRemovedEvent { UnitId = UnitId, EffectType = type });
 
             // TODO: Apply on-turn-start status effects (burn damage, regen, etc.)
             //       via a StatusEffectResolver. Keep resolution logic outside BaseUnit.

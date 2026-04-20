@@ -1,0 +1,45 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2a9e2c607d0dc534ca63b16b0c6d903d, type: 3}
+  m_Name: DummyArchetype
+  m_EditorClassIdentifier: Assembly-CSharp::PokemonAdventure.ScriptableObjects.EnemyArchetypeDefinition
+  EnemyName: Dummy
+  Role: 1
+  BehaviourDescription: 
+  BaseStats:
+    BaseHP: 10000
+    BaseAttack: 56
+    BaseSpecialAttack: 25
+    BaseDefense: 35
+    BaseSpecialDefense: 35
+    BaseInitiative: 1
+    Level: 1
+    BonusHP: 0
+    BonusPhysicalArmor: 0
+    BonusSpecialArmor: 0
+    BonusAttack: 0
+    BonusSpecialAttack: 0
+    BonusInitiative: 0
+  SightRange: 5
+  IsAmbusher: 0
+  StealthLevel: 0
+  StartingSkills: []
+  MovementRange: 1
+  TargetPriority: 3
+  SkillPreference: 0
+  MovementStyle: 0
+  FleeThreshold: 0
+  PrimaryType: 4
+  SecondaryType: 18
+  AnimationSet: {fileID: 11400000, guid: e9f40e24ddecb9d46b20c148e41f3d3a, type: 2}
+  PortraitSprite: {fileID: 0}
+  LootTable: []

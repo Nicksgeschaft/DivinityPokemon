@@ -135,6 +135,12 @@ namespace PokemonAdventure.Core
         public Data.StatusEffectType EffectType;
     }
 
+    public struct UnitStatusRemovedEvent
+    {
+        public string UnitId;
+        public Data.StatusEffectType EffectType;
+    }
+
     // ── Actions ───────────────────────────────────────────────────────────────
 
     public struct ActionExecutedEvent
@@ -264,5 +270,6 @@ namespace PokemonAdventure.Core
         public float ArmorAbsorbed;
         public float HPDamage;
         public Combat.EffectivenessCategory Effectiveness;
+        public bool  IsMiss;
     }
 }
